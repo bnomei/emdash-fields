@@ -1,0 +1,79 @@
+{
+  "name": "@bnomei/emdash-fields",
+  "version": "0.1.0",
+  "description": "Structured JSON fields for EmDash, including object, structure, link, and choices editors.",
+  "keywords": [
+    "astro",
+    "cms",
+    "emdash",
+    "emdash-plugin",
+    "field-widget",
+    "forms",
+    "json",
+    "react",
+    "typescript"
+  ],
+  "homepage": "https://github.com/bnomei/emdash-fields#readme",
+  "bugs": {
+    "url": "https://github.com/bnomei/emdash-fields/issues"
+  },
+  "license": "MIT",
+  "author": "Bruno Meilick <b@bnomei.com> (https://bnomei.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bnomei/emdash-fields.git"
+  },
+  "files": [
+    "dist",
+    "screenshot.png"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./admin": {
+      "types": "./dist/admin.d.mts",
+      "import": "./dist/admin.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack src/index.ts src/admin.tsx --format esm --dts --clean --tsconfig tsconfig.json",
+    "check": "vp check .",
+    "pack:check": "vp pack src/index.ts src/admin.tsx --format esm --dts --clean --tsconfig tsconfig.json --publint",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run check && npm run typecheck && npm run pack:check && npm run types:check",
+    "types:check": "attw --pack . --profile esm-only --no-summary",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.3",
+    "@cloudflare/kumo": "^2.5.2",
+    "@phosphor-icons/react": "^2.1.10",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "emdash": "^0.19.0",
+    "publint": "^0.3.21",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^6.0.3",
+    "vite-plus": "^0.1.24"
+  },
+  "peerDependencies": {
+    "@cloudflare/kumo": "^2.5.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "emdash": ">=0.17.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CI: true
+      NPM_CONFIG_CACHE: ${{ runner.temp }}/npm-cache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify release tag
+        run: node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const tag = process.env.RELEASE_TAG; if (tag !== pkg.version && tag !== `v${pkg.version}`) { console.error(`Release tag ${tag} does not match package version ${pkg.version}`); process.exit(1); }"
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+      - name: Run VitePlus checks
+        run: npx vp check .
+
+      - name: Run TypeScript
+        run: npm run typecheck
+
+      - name: Validate VitePlus package build
+        run: npx vp pack src/index.ts src/admin.tsx --format esm --dts --clean --tsconfig tsconfig.json --publint
+
+      - name: Validate published types
+        run: npm run types:check
+
+      - name: Publish to npm
+        run: npm publish --access public
