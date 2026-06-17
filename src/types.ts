@@ -28,7 +28,6 @@ export type FieldsSubField = {
 
 export type ObjectOptions = {
   fields: FieldsSubField[];
-  collapsed?: boolean;
   helpText?: string;
 };
 
@@ -68,7 +67,6 @@ export type ChoicesOptions = {
   choices?: FieldsChoice[] | string[];
   options?: FieldsChoice[] | string[];
   multiple?: boolean;
-  presentation?: "radio" | "checkbox" | "toggle";
   orientation?: "vertical" | "horizontal";
   columns?: number;
   helpText?: string;
