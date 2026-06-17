@@ -52,7 +52,7 @@
     "prepublishOnly": "npm run check && npm run typecheck && npm run pack:check && npm run types:check",
     "types:check": "attw --pack . --profile esm-only --no-summary",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "npm run build && node --test test/*.test.mjs tests/*.test.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",

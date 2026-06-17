@@ -227,13 +227,33 @@ function renderChoiceCardLabel(choice: FieldsChoice) {
   );
 }
 
-function readInputValue(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+export function parseNumericInput(value: string, type: "number" | "integer") {
+  if (value.trim() === "") {
+    return undefined;
+  }
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return undefined;
+  }
+
+  if (type === "integer" && !Number.isInteger(numericValue)) {
+    return undefined;
+  }
+
+  return numericValue;
+}
+
+function readInputValue(
+  event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  type: FieldsSubField["type"],
+) {
   const target = event.currentTarget;
   if (target instanceof HTMLInputElement && target.type === "checkbox") {
     return target.checked;
   }
   if (target instanceof HTMLInputElement && target.type === "number") {
-    return target.value === "" ? undefined : Number(target.value);
+    return parseNumericInput(target.value, type === "integer" ? "integer" : "number");
   }
   return target.value;
 }
@@ -253,7 +273,7 @@ function renderSubField(
     placeholder: field.placeholder,
     value: typeof value === "string" || typeof value === "number" ? value : "",
     onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      onChange(readInputValue(event)),
+      onChange(readInputValue(event, type)),
   };
 
   const selectChoices = choices(field.options);

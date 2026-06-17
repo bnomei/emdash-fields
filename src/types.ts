@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 
 export type FieldsSubFieldType =
   | "text"
@@ -13,7 +13,14 @@ export type FieldsChoice = {
   value: string;
   label?: string;
   description?: string;
-  icon?: ReactNode;
+  /**
+   * Display icon for a choice.
+   *
+   * Schema-safe configuration should use a string token (for initials or a glyph)
+   * or a string image source (http(s), root-relative, relative, or data:image/).
+   * Code-defined options may pass a React element.
+   */
+  icon?: string | ReactElement;
 };
 
 export type FieldsSubField = {
@@ -28,7 +35,6 @@ export type FieldsSubField = {
 
 export type ObjectOptions = {
   fields: FieldsSubField[];
-  collapsed?: boolean;
   helpText?: string;
 };
 
@@ -68,7 +74,6 @@ export type ChoicesOptions = {
   choices?: FieldsChoice[] | string[];
   options?: FieldsChoice[] | string[];
   multiple?: boolean;
-  presentation?: "radio" | "checkbox" | "toggle";
   orientation?: "vertical" | "horizontal";
   columns?: number;
   helpText?: string;
