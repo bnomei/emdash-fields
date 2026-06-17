@@ -260,12 +260,17 @@ function renderSubField(
 
   return (
     <div key={field.key} style={fieldStyle}>
-      {type === "boolean" ? null : <span style={labelStyle}>{field.label}</span>}
+      {type === "boolean" || type === "select" ? null : (
+        <label htmlFor={id} style={labelStyle}>
+          {field.label}
+        </label>
+      )}
       {type === "textarea" ? (
-        <Textarea {...commonProps} aria-label={field.label} className="min-h-24 w-full" rows={4} />
+        <Textarea {...commonProps} className="min-h-24 w-full" rows={4} />
       ) : type === "boolean" ? (
-        <label style={checkboxRowStyle}>
+        <label htmlFor={id} style={checkboxRowStyle}>
           <input
+            id={id}
             type="checkbox"
             checked={Boolean(value)}
             name={field.key}
@@ -277,7 +282,7 @@ function renderSubField(
         </label>
       ) : type === "select" ? (
         <Select
-          aria-label={field.label}
+          label={field.label}
           className="w-full"
           items={[
             { value: "", label: "Select..." },
@@ -292,7 +297,6 @@ function renderSubField(
       ) : (
         <Input
           {...commonProps}
-          aria-label={field.label}
           className="w-full"
           type={
             type === "number" || type === "integer" ? "number" : type === "url" ? "url" : "text"
@@ -463,9 +467,8 @@ export function LinkField({
   return (
     <div id={id} tabIndex={-1} style={wrapperStyle}>
       <div style={fieldStyle}>
-        <span style={labelStyle}>Type</span>
         <Select
-          aria-label="Link type"
+          label="Type"
           className="w-full"
           items={[
             { value: "url", label: "URL" },
@@ -479,27 +482,30 @@ export function LinkField({
         />
       </div>
       <div style={fieldStyle}>
-        <span style={labelStyle}>Value</span>
+        <label htmlFor={`${id}-value`} style={labelStyle}>
+          Value
+        </label>
         <Input
           id={`${id}-value`}
-          aria-label="Link value"
           className="w-full"
           value={data.value ?? ""}
           onChange={(event) => update({ value: event.currentTarget.value })}
         />
       </div>
       <div style={fieldStyle}>
-        <span style={labelStyle}>Text</span>
+        <label htmlFor={`${id}-text`} style={labelStyle}>
+          Text
+        </label>
         <Input
           id={`${id}-text`}
-          aria-label="Link text"
           className="w-full"
           value={data.text ?? ""}
           onChange={(event) => update({ text: event.currentTarget.value })}
         />
       </div>
-      <label style={checkboxRowStyle}>
+      <label htmlFor={`${id}-target`} style={checkboxRowStyle}>
         <input
+          id={`${id}-target`}
           type="checkbox"
           checked={data.target === "_blank"}
           onChange={(event: ChangeEvent<HTMLInputElement>) =>
@@ -515,10 +521,12 @@ export function LinkField({
 export function ChoicesField({
   value,
   onChange,
+  label,
   id = "fields-choices",
   options,
 }: FieldWidgetProps<ChoicesOptions>) {
   const choicesList = choices(options?.choices ?? options?.options);
+  const legend = label ?? "Choices";
   const multiple = Boolean(options?.multiple);
   const horizontal = options?.orientation === "horizontal";
   const selected = multiple
@@ -536,7 +544,7 @@ export function ChoicesField({
   if (horizontal) {
     return (
       <fieldset id={id} style={fieldsetStyle}>
-        <legend style={legendStyle}>Choices</legend>
+        <legend style={legendStyle}>{legend}</legend>
         <div style={horizontalChoiceGridStyle(options?.columns, choicesList.length)}>
           {choicesList.map((choice) => {
             const checked = selected.has(choice.value);
@@ -587,37 +595,42 @@ export function ChoicesField({
 
   if (multiple) {
     return (
-      <div id={id} tabIndex={-1} style={fieldStyle}>
-        <span style={labelStyle}>Choices</span>
-        {choicesList.map((choice) => (
-          <label key={choice.value} style={checkboxChoiceRowStyle}>
-            <input
-              type="checkbox"
-              checked={selected.has(choice.value)}
-              value={choice.value}
-              style={choiceControlStyle}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                const nextSelected = new Set(selected);
-                if (event.currentTarget.checked) {
-                  nextSelected.add(choice.value);
-                } else {
-                  nextSelected.delete(choice.value);
-                }
-                onChange([...nextSelected]);
-              }}
-            />
-            {choice.icon ? renderChoiceCardLabel(choice) : (choice.label ?? choice.value)}
-          </label>
-        ))}
+      <fieldset id={id} style={fieldsetStyle}>
+        <legend style={legendStyle}>{legend}</legend>
+        {choicesList.map((choice) => {
+          const inputId = choiceInputId(id, choice.value);
+
+          return (
+            <label key={choice.value} htmlFor={inputId} style={checkboxChoiceRowStyle}>
+              <input
+                id={inputId}
+                type="checkbox"
+                checked={selected.has(choice.value)}
+                value={choice.value}
+                style={choiceControlStyle}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                  const nextSelected = new Set(selected);
+                  if (event.currentTarget.checked) {
+                    nextSelected.add(choice.value);
+                  } else {
+                    nextSelected.delete(choice.value);
+                  }
+                  onChange([...nextSelected]);
+                }}
+              />
+              {choice.icon ? renderChoiceCardLabel(choice) : (choice.label ?? choice.value)}
+            </label>
+          );
+        })}
         {options?.helpText ? <small style={helpTextStyle}>{options.helpText}</small> : null}
-      </div>
+      </fieldset>
     );
   }
 
   return (
     <div id={id} tabIndex={-1}>
       <Radio.Group
-        legend="Choices"
+        legend={legend}
         appearance="card"
         value={typeof value === "string" ? value : ""}
         onValueChange={(nextValue) => onChange(nextValue)}
