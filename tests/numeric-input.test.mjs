@@ -16,8 +16,14 @@ test("numeric input emits undefined for invalid values instead of NaN", () => {
 test("number input accepts integer, decimal, and boundary finite values", () => {
   assert.equal(parseNumericInput("42", "number"), 42);
   assert.equal(parseNumericInput("3.14", "number"), 3.14);
-  assert.equal(parseNumericInput(String(Number.MAX_SAFE_INTEGER), "number"), Number.MAX_SAFE_INTEGER);
-  assert.equal(parseNumericInput(String(Number.MIN_SAFE_INTEGER), "number"), Number.MIN_SAFE_INTEGER);
+  assert.equal(
+    parseNumericInput(String(Number.MAX_SAFE_INTEGER), "number"),
+    Number.MAX_SAFE_INTEGER,
+  );
+  assert.equal(
+    parseNumericInput(String(Number.MIN_SAFE_INTEGER), "number"),
+    Number.MIN_SAFE_INTEGER,
+  );
 });
 
 test("integer input accepts integers and rejects decimals", () => {

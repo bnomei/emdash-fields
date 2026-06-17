@@ -162,18 +162,102 @@ const helpTextStyle = {
 
 const fullWidthButtonClassName = "h-9 min-h-9 w-full justify-center";
 
-function asRecord(value: unknown): JsonRecord {
+export function normalizeObjectValue(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
 }
 
-function asList(value: unknown): JsonRecord[] {
-  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+export function updateObjectValue(value: unknown, key: string, nextValue: unknown): JsonRecord {
+  return { ...normalizeObjectValue(value), [key]: nextValue };
 }
 
-function choices(value?: FieldsChoice[] | string[]): FieldsChoice[] {
+export function normalizeStructureValue(value: unknown): JsonRecord[] {
+  return Array.isArray(value) ? value.map((item) => normalizeObjectValue(item)) : [];
+}
+
+export function addStructureItem(value: unknown): JsonRecord[] {
+  return [...normalizeStructureValue(value), {}];
+}
+
+export function updateStructureItem(
+  value: unknown,
+  index: number,
+  nextItem: unknown,
+): JsonRecord[] {
+  const items = normalizeStructureValue(value);
+  if (index < 0 || index >= items.length) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  nextItems[index] = normalizeObjectValue(nextItem);
+  return nextItems;
+}
+
+export function removeStructureItem(value: unknown, index: number): JsonRecord[] {
+  return normalizeStructureValue(value).filter((_item, itemIndex) => itemIndex !== index);
+}
+
+export function moveStructureItem(
+  value: unknown,
+  fromIndex: number,
+  toIndex: number,
+): JsonRecord[] {
+  const items = normalizeStructureValue(value);
+  if (fromIndex < 0 || fromIndex >= items.length || toIndex < 0 || toIndex >= items.length) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [moved] = nextItems.splice(fromIndex, 1);
+  if (!moved) {
+    return items;
+  }
+
+  nextItems.splice(toIndex, 0, moved);
+  return nextItems;
+}
+
+export function normalizeLinkValue(value: unknown): LinkValue {
+  return normalizeObjectValue(value) as LinkValue;
+}
+
+export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): LinkValue {
+  return { ...normalizeLinkValue(value), ...nextValue };
+}
+
+export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoice[] {
   return (value ?? []).map((choice) =>
     typeof choice === "string" ? { value: choice, label: choice } : choice,
   );
+}
+
+export function normalizeChoiceSelection(value: unknown, multiple: boolean): string[] {
+  if (multiple) {
+    return Array.isArray(value)
+      ? [...new Set(value.filter((item): item is string => typeof item === "string"))]
+      : [];
+  }
+
+  return typeof value === "string" ? [value] : [];
+}
+
+export function updateChoiceSelection(
+  value: unknown,
+  choiceValue: string,
+  checked: boolean,
+  multiple: boolean,
+): string | string[] {
+  if (!multiple) {
+    return checked ? choiceValue : (normalizeChoiceSelection(value, false)[0] ?? "");
+  }
+
+  const nextSelected = new Set(normalizeChoiceSelection(value, true));
+  if (checked) {
+    nextSelected.add(choiceValue);
+  } else {
+    nextSelected.delete(choiceValue);
+  }
+  return [...nextSelected];
 }
 
 function choiceColumnCount(columns: number | undefined, total: number) {
@@ -276,7 +360,7 @@ function renderSubField(
       onChange(readInputValue(event, type)),
   };
 
-  const selectChoices = choices(field.options);
+  const selectChoices = normalizeChoices(field.options);
 
   return (
     <div key={field.key} style={fieldStyle}>
@@ -339,7 +423,7 @@ function renderObjectFields(
     renderSubField(
       field,
       value[field.key],
-      (nextValue) => onChange({ ...value, [field.key]: nextValue }),
+      (nextValue) => onChange(updateObjectValue(value, field.key, nextValue)),
       idPrefix,
     ),
   );
@@ -359,7 +443,7 @@ export function ObjectField({
   id = "fields-object",
   options,
 }: FieldWidgetProps<ObjectOptions>) {
-  const data = asRecord(value);
+  const data = normalizeObjectValue(value);
   const fields = options?.fields ?? [];
 
   if (!fields.length) {
@@ -380,7 +464,7 @@ export function StructureField({
   id = "fields-structure",
   options,
 }: FieldWidgetProps<StructureOptions>) {
-  const items = asList(value);
+  const items = normalizeStructureValue(value);
   const fields = options?.fields ?? [];
   const itemLabel = options?.itemLabel ?? "Item";
   const sortable = options?.sortable !== false;
@@ -393,14 +477,6 @@ export function StructureField({
     onChange(nextItems);
   }
 
-  function moveItem(fromIndex: number, toIndex: number) {
-    const nextItems = [...items];
-    const [moved] = nextItems.splice(fromIndex, 1);
-    if (!moved) return;
-    nextItems.splice(toIndex, 0, moved);
-    updateItems(nextItems);
-  }
-
   return (
     <div id={id} tabIndex={-1} style={wrapperStyle}>
       {items.map((item, index) => (
@@ -410,9 +486,7 @@ export function StructureField({
             fields,
             item,
             (nextItem) => {
-              const nextItems = [...items];
-              nextItems[index] = nextItem;
-              updateItems(nextItems);
+              updateItems(updateStructureItem(items, index, nextItem));
             },
             `${id}-${index}`,
           )}
@@ -423,7 +497,7 @@ export function StructureField({
               variant="secondary-destructive"
               icon={TrashIcon}
               disabled={typeof options?.min === "number" && items.length <= options.min}
-              onClick={() => updateItems(items.filter((_item, itemIndex) => itemIndex !== index))}
+              onClick={() => updateItems(removeStructureItem(items, index))}
             >
               Remove
             </Button>
@@ -434,7 +508,7 @@ export function StructureField({
                   size="sm"
                   icon={ArrowUpIcon}
                   disabled={index === 0}
-                  onClick={() => moveItem(index, index - 1)}
+                  onClick={() => updateItems(moveStructureItem(items, index, index - 1))}
                 >
                   Up
                 </Button>
@@ -443,7 +517,7 @@ export function StructureField({
                   size="sm"
                   icon={ArrowDownIcon}
                   disabled={index === items.length - 1}
-                  onClick={() => moveItem(index, index + 1)}
+                  onClick={() => updateItems(moveStructureItem(items, index, index + 1))}
                 >
                   Down
                 </Button>
@@ -458,7 +532,7 @@ export function StructureField({
         className={fullWidthButtonClassName}
         icon={PlusIcon}
         disabled={typeof options?.max === "number" && items.length >= options.max}
-        onClick={() => updateItems([...items, {}])}
+        onClick={() => updateItems(addStructureItem(items))}
       >
         Add {itemLabel}
       </Button>
@@ -478,10 +552,10 @@ export function LinkField({
   onChange,
   id = "fields-link",
 }: FieldWidgetProps<Record<string, unknown>>) {
-  const data = asRecord(value) as LinkValue;
+  const data = normalizeLinkValue(value);
 
   function update(nextValue: Partial<LinkValue>) {
-    onChange({ ...data, ...nextValue });
+    onChange(updateLinkValue(data, nextValue));
   }
 
   return (
@@ -545,17 +619,11 @@ export function ChoicesField({
   id = "fields-choices",
   options,
 }: FieldWidgetProps<ChoicesOptions>) {
-  const choicesList = choices(options?.choices ?? options?.options);
+  const choicesList = normalizeChoices(options?.choices ?? options?.options);
   const legend = label ?? "Choices";
   const multiple = Boolean(options?.multiple);
   const horizontal = options?.orientation === "horizontal";
-  const selected = multiple
-    ? new Set(
-        Array.isArray(value)
-          ? value.filter((item): item is string => typeof item === "string")
-          : [],
-      )
-    : new Set(typeof value === "string" ? [value] : []);
+  const selected = new Set(normalizeChoiceSelection(value, multiple));
 
   if (!choicesList.length) {
     return <p>Widget misconfigured: choices requires options.choices.</p>;
@@ -589,18 +657,19 @@ export function ChoicesField({
                   style={choiceControlStyle}
                   onChange={(event: ChangeEvent<HTMLInputElement>) => {
                     if (multiple) {
-                      const nextSelected = new Set(selected);
-                      if (event.currentTarget.checked) {
-                        nextSelected.add(choice.value);
-                      } else {
-                        nextSelected.delete(choice.value);
-                      }
-                      onChange([...nextSelected]);
+                      onChange(
+                        updateChoiceSelection(
+                          value,
+                          choice.value,
+                          event.currentTarget.checked,
+                          true,
+                        ),
+                      );
                       return;
                     }
 
                     if (event.currentTarget.checked) {
-                      onChange(choice.value);
+                      onChange(updateChoiceSelection(value, choice.value, true, false));
                     }
                   }}
                 />
@@ -629,13 +698,9 @@ export function ChoicesField({
                 value={choice.value}
                 style={choiceControlStyle}
                 onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                  const nextSelected = new Set(selected);
-                  if (event.currentTarget.checked) {
-                    nextSelected.add(choice.value);
-                  } else {
-                    nextSelected.delete(choice.value);
-                  }
-                  onChange([...nextSelected]);
+                  onChange(
+                    updateChoiceSelection(value, choice.value, event.currentTarget.checked, true),
+                  );
                 }}
               />
               {choice.icon ? renderChoiceCardLabel(choice) : (choice.label ?? choice.value)}
@@ -653,7 +718,9 @@ export function ChoicesField({
         legend={legend}
         appearance="card"
         value={typeof value === "string" ? value : ""}
-        onValueChange={(nextValue) => onChange(nextValue)}
+        onValueChange={(nextValue) =>
+          onChange(updateChoiceSelection(value, String(nextValue), true, false))
+        }
         description={options?.helpText}
       >
         {choicesList.map((choice) => {
