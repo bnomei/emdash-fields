@@ -199,10 +199,32 @@ Choices with horizontal cards:
 }
 ```
 
-Choice icons can be schema-safe strings or React nodes. Plain strings render as
-compact icon tokens; `http`, `https`, root-relative, relative, and `data:image/`
-values render as decorative images. Code-defined option objects can also pass a
-React icon element such as `icon: <BrainIcon size={16} weight="duotone" />`.
+### Choice Icons
+
+Choice icons should be either schema-safe strings or code-defined React elements:
+
+- Short plain strings such as `"AI"`, `"V"`, or `"✓"` render as compact text
+  tokens. These are the safest choice for JSON, YAML, or other serialized schema
+  configuration.
+- String image sources render as decorative images when they start with `http:`,
+  `https:`, `/`, `./`, `../`, or `data:image/`. Prefer project-owned assets such
+  as `/icons/ai.svg` or `./icons/vectorize.svg` when the schema is serialized.
+- React icon elements are supported only when choices are defined in TypeScript or
+  JavaScript code, for example `icon: <BrainIcon size={16} weight="duotone" />`.
+  Do not place JSX, component names, functions, or object literals in serialized
+  schema files.
+
+Schema-safe icon examples:
+
+```json
+{ "value": "workers-ai", "label": "Workers AI", "icon": "AI" }
+{ "value": "vectorize", "label": "Vectorize", "icon": "/icons/vectorize.svg" }
+{ "value": "gateway", "label": "AI Gateway", "icon": "./icons/gateway.svg" }
+```
+
+Avoid ambiguous or unsafe serialized values such as `"BrainIcon"` when it is meant
+to reference a component, raw `<svg>...</svg>` markup, JavaScript expressions, or
+non-image `data:` URLs.
 
 ## Stored Values
 
