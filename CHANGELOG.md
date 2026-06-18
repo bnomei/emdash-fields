@@ -4,6 +4,14 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.2.0 - 2026-06-18
+
+- Added EmDash-shaped `i18n` options with `locale`, `defaultLocale`,
+  `locales`, `fallback`, and `messages` for field widget copy.
+- Added localized string support for authored field labels, help text,
+  placeholders, suffixes, choices, and widget metadata labels.
+- Exported the default field i18n catalog, message keys, and resolver helpers.
+
 ## 0.1.1 - 2026-06-18
 
 - Added deterministic value transformation helpers and test coverage for object,

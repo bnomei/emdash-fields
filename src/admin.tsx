@@ -1,10 +1,19 @@
 import { Button, Input, Radio, Select, Textarea } from "@cloudflare/kumo";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { useAdminLocale } from "./admin-locale";
+import {
+  fieldMessage,
+  formatFieldMessage,
+  localizedString,
+  type FieldsI18nConfig,
+  type LocalizedString,
+} from "./i18n";
 import type { CSSProperties, ChangeEvent } from "react";
 import type {
   ChoicesOptions,
   FieldsChoice,
   FieldsSubField,
+  LinkOptions,
   LinkValue,
   ObjectOptions,
   StructureOptions,
@@ -162,6 +171,11 @@ const helpTextStyle = {
 
 const fullWidthButtonClassName = "h-9 min-h-9 w-full justify-center";
 
+function useFieldI18n(i18n: FieldsI18nConfig | undefined): FieldsI18nConfig {
+  const locale = useAdminLocale(i18n?.locale ?? i18n?.defaultLocale);
+  return { ...i18n, locale };
+}
+
 export function normalizeObjectValue(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
 }
@@ -298,18 +312,22 @@ function renderChoiceIcon(choice: FieldsChoice) {
   );
 }
 
-function renderChoiceCardLabel(choice: FieldsChoice) {
+function renderChoiceCardLabel(choice: FieldsChoice, i18n: FieldsI18nConfig) {
+  const description = localizedString(choice.description, i18n);
+
   return (
     <span style={choiceCardContentStyle}>
       {renderChoiceIcon(choice)}
       <span style={choiceCardTextStyle}>
-        <span style={choiceCardLabelStyle}>{choice.label ?? choice.value}</span>
-        {choice.description ? (
-          <span style={choiceDescriptionStyle}>{choice.description}</span>
-        ) : null}
+        <span style={choiceCardLabelStyle}>{choiceLabel(choice, i18n)}</span>
+        {description ? <span style={choiceDescriptionStyle}>{description}</span> : null}
       </span>
     </span>
   );
+}
+
+function choiceLabel(choice: FieldsChoice, i18n: FieldsI18nConfig) {
+  return localizedString(choice.label, i18n, choice.value);
 }
 
 export function parseNumericInput(value: string, type: "number" | "integer") {
@@ -348,15 +366,19 @@ function renderSubField(
   value: unknown,
   onChange: (value: unknown) => void,
   idPrefix: string,
+  i18n: FieldsI18nConfig,
 ) {
   const id = `${idPrefix}-${field.key}`;
   const labelId = `${id}-label`;
   const type = field.type ?? "text";
+  const label = localizedString(field.label, i18n);
+  const placeholder = localizedString(field.placeholder, i18n) || undefined;
+  const suffix = localizedString(field.suffix, i18n);
   const commonProps = {
     id,
     name: field.key,
     required: field.required,
-    placeholder: field.placeholder,
+    placeholder,
     "aria-labelledby": labelId,
     value: typeof value === "string" || typeof value === "number" ? value : "",
     onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -369,7 +391,7 @@ function renderSubField(
     <div key={field.key} style={fieldStyle}>
       {type === "boolean" || type === "select" ? null : (
         <label id={labelId} htmlFor={id} style={labelStyle}>
-          {field.label}
+          {label}
         </label>
       )}
       {type === "textarea" ? (
@@ -385,17 +407,17 @@ function renderSubField(
               onChange(event.currentTarget.checked)
             }
           />
-          {field.label}
+          {label}
         </label>
       ) : type === "select" ? (
         <Select
-          label={field.label}
+          label={label}
           className="w-full"
           items={[
-            { value: "", label: "Select..." },
+            { value: "", label: fieldMessage("select", i18n) },
             ...selectChoices.map((choice) => ({
               value: choice.value,
-              label: choice.label ?? choice.value,
+              label: choiceLabel(choice, i18n),
             })),
           ]}
           value={typeof value === "string" ? value : ""}
@@ -411,7 +433,7 @@ function renderSubField(
           step={type === "integer" ? 1 : undefined}
         />
       )}
-      {field.suffix ? <small style={helpTextStyle}>{field.suffix}</small> : null}
+      {suffix ? <small style={helpTextStyle}>{suffix}</small> : null}
     </div>
   );
 }
@@ -421,6 +443,7 @@ function renderObjectFields(
   value: JsonRecord,
   onChange: (value: JsonRecord) => void,
   idPrefix: string,
+  i18n: FieldsI18nConfig,
 ) {
   return fields.map((field) =>
     renderSubField(
@@ -428,13 +451,20 @@ function renderObjectFields(
       value[field.key],
       (nextValue) => onChange(updateObjectValue(value, field.key, nextValue)),
       idPrefix,
+      i18n,
     ),
   );
 }
 
-function summary(template: string | undefined, item: JsonRecord, fallback: string) {
+function summary(
+  template: LocalizedString | undefined,
+  item: JsonRecord,
+  fallback: string,
+  i18n: FieldsI18nConfig,
+) {
   if (!template) return fallback;
-  return template.replace(/\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/g, (_match, key: string) => {
+  const localizedTemplate = localizedString(template, i18n);
+  return localizedTemplate.replace(/\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/g, (_match, key: string) => {
     const value = item[key];
     return typeof value === "string" || typeof value === "number" ? String(value) : "";
   });
@@ -446,17 +476,20 @@ export function ObjectField({
   id = "fields-object",
   options,
 }: FieldWidgetProps<ObjectOptions>) {
+  const i18n = useFieldI18n(options?.i18n);
   const data = normalizeObjectValue(value);
   const fields = options?.fields ?? [];
 
   if (!fields.length) {
-    return <p>Widget misconfigured: object requires options.fields.</p>;
+    return <p>{fieldMessage("objectRequiresFields", i18n)}</p>;
   }
 
   return (
     <div id={id} tabIndex={-1} style={wrapperStyle}>
-      {renderObjectFields(fields, data, (nextValue) => onChange(nextValue), id)}
-      {options?.helpText ? <small style={helpTextStyle}>{options.helpText}</small> : null}
+      {renderObjectFields(fields, data, (nextValue) => onChange(nextValue), id, i18n)}
+      {options?.helpText ? (
+        <small style={helpTextStyle}>{localizedString(options.helpText, i18n)}</small>
+      ) : null}
     </div>
   );
 }
@@ -467,13 +500,14 @@ export function StructureField({
   id = "fields-structure",
   options,
 }: FieldWidgetProps<StructureOptions>) {
+  const i18n = useFieldI18n(options?.i18n);
   const items = normalizeStructureValue(value);
   const fields = options?.fields ?? [];
-  const itemLabel = options?.itemLabel ?? "Item";
+  const itemLabel = localizedString(options?.itemLabel, i18n, fieldMessage("item", i18n));
   const sortable = options?.sortable !== false;
 
   if (!fields.length) {
-    return <p>Widget misconfigured: structure requires options.fields.</p>;
+    return <p>{fieldMessage("structureRequiresFields", i18n)}</p>;
   }
 
   function updateItems(nextItems: JsonRecord[]) {
@@ -484,7 +518,7 @@ export function StructureField({
     <div id={id} tabIndex={-1} style={wrapperStyle}>
       {items.map((item, index) => (
         <section key={index} style={rowStyle}>
-          <strong>{summary(options?.summary, item, `${itemLabel} ${index + 1}`)}</strong>
+          <strong>{summary(options?.summary, item, `${itemLabel} ${index + 1}`, i18n)}</strong>
           {renderObjectFields(
             fields,
             item,
@@ -492,6 +526,7 @@ export function StructureField({
               updateItems(updateStructureItem(items, index, nextItem));
             },
             `${id}-${index}`,
+            i18n,
           )}
           <div style={buttonRowStyle}>
             <Button
@@ -502,7 +537,7 @@ export function StructureField({
               disabled={typeof options?.min === "number" && items.length <= options.min}
               onClick={() => updateItems(removeStructureItem(items, index))}
             >
-              Remove
+              {fieldMessage("remove", i18n)}
             </Button>
             {sortable ? (
               <>
@@ -513,7 +548,7 @@ export function StructureField({
                   disabled={index === 0}
                   onClick={() => updateItems(moveStructureItem(items, index, index - 1))}
                 >
-                  Up
+                  {fieldMessage("up", i18n)}
                 </Button>
                 <Button
                   type="button"
@@ -522,7 +557,7 @@ export function StructureField({
                   disabled={index === items.length - 1}
                   onClick={() => updateItems(moveStructureItem(items, index, index + 1))}
                 >
-                  Down
+                  {fieldMessage("down", i18n)}
                 </Button>
               </>
             ) : null}
@@ -537,9 +572,11 @@ export function StructureField({
         disabled={typeof options?.max === "number" && items.length >= options.max}
         onClick={() => updateItems(addStructureItem(items))}
       >
-        Add {itemLabel}
+        {formatFieldMessage("addItem", i18n, { item: itemLabel })}
       </Button>
-      {options?.helpText ? <small style={helpTextStyle}>{options.helpText}</small> : null}
+      {options?.helpText ? (
+        <small style={helpTextStyle}>{localizedString(options.helpText, i18n)}</small>
+      ) : null}
     </div>
   );
 }
@@ -554,7 +591,9 @@ export function LinkField({
   value,
   onChange,
   id = "fields-link",
-}: FieldWidgetProps<Record<string, unknown>>) {
+  options,
+}: FieldWidgetProps<LinkOptions>) {
+  const i18n = useFieldI18n(options?.i18n);
   const data = normalizeLinkValue(value);
 
   function update(nextValue: Partial<LinkValue>) {
@@ -565,14 +604,14 @@ export function LinkField({
     <div id={id} tabIndex={-1} style={wrapperStyle}>
       <div style={fieldStyle}>
         <Select
-          label="Type"
+          label={fieldMessage("type", i18n)}
           className="w-full"
           items={[
-            { value: "url", label: "URL" },
-            { value: "email", label: "Email" },
-            { value: "tel", label: "Telephone" },
-            { value: "entry", label: "Entry" },
-            { value: "media", label: "Media" },
+            { value: "url", label: fieldMessage("url", i18n) },
+            { value: "email", label: fieldMessage("email", i18n) },
+            { value: "tel", label: fieldMessage("telephone", i18n) },
+            { value: "entry", label: fieldMessage("entry", i18n) },
+            { value: "media", label: fieldMessage("media", i18n) },
           ]}
           value={data.type ?? "url"}
           onValueChange={(nextValue) => update({ type: String(nextValue) as LinkValue["type"] })}
@@ -580,7 +619,7 @@ export function LinkField({
       </div>
       <div style={fieldStyle}>
         <label id={`${id}-value-label`} htmlFor={`${id}-value`} style={labelStyle}>
-          Value
+          {fieldMessage("value", i18n)}
         </label>
         <Input
           id={`${id}-value`}
@@ -592,7 +631,7 @@ export function LinkField({
       </div>
       <div style={fieldStyle}>
         <label id={`${id}-text-label`} htmlFor={`${id}-text`} style={labelStyle}>
-          Text
+          {fieldMessage("text", i18n)}
         </label>
         <Input
           id={`${id}-text`}
@@ -611,7 +650,7 @@ export function LinkField({
             update({ target: event.currentTarget.checked ? "_blank" : "_self" })
           }
         />
-        Open in new tab
+        {fieldMessage("openInNewTab", i18n)}
       </label>
     </div>
   );
@@ -624,14 +663,15 @@ export function ChoicesField({
   id = "fields-choices",
   options,
 }: FieldWidgetProps<ChoicesOptions>) {
+  const i18n = useFieldI18n(options?.i18n);
   const choicesList = normalizeChoices(options?.choices ?? options?.options);
-  const legend = label ?? "Choices";
+  const legend = label ?? fieldMessage("choices", i18n);
   const multiple = Boolean(options?.multiple);
   const horizontal = options?.orientation === "horizontal";
   const selected = new Set(normalizeChoiceSelection(value, multiple));
 
   if (!choicesList.length) {
-    return <p>Widget misconfigured: choices requires options.choices.</p>;
+    return <p>{fieldMessage("choicesRequiresChoices", i18n)}</p>;
   }
 
   if (horizontal) {
@@ -652,7 +692,7 @@ export function ChoicesField({
                   ...(checked ? selectedChoiceCardStyle : {}),
                 }}
               >
-                {renderChoiceCardLabel(choice)}
+                {renderChoiceCardLabel(choice, i18n)}
                 <input
                   id={inputId}
                   type={multiple ? "checkbox" : "radio"}
@@ -682,7 +722,9 @@ export function ChoicesField({
             );
           })}
         </div>
-        {options?.helpText ? <small style={helpTextStyle}>{options.helpText}</small> : null}
+        {options?.helpText ? (
+          <small style={helpTextStyle}>{localizedString(options.helpText, i18n)}</small>
+        ) : null}
       </fieldset>
     );
   }
@@ -708,11 +750,13 @@ export function ChoicesField({
                   );
                 }}
               />
-              {choice.icon ? renderChoiceCardLabel(choice) : (choice.label ?? choice.value)}
+              {choice.icon ? renderChoiceCardLabel(choice, i18n) : choiceLabel(choice, i18n)}
             </label>
           );
         })}
-        {options?.helpText ? <small style={helpTextStyle}>{options.helpText}</small> : null}
+        {options?.helpText ? (
+          <small style={helpTextStyle}>{localizedString(options.helpText, i18n)}</small>
+        ) : null}
       </fieldset>
     );
   }
@@ -726,7 +770,7 @@ export function ChoicesField({
         onValueChange={(nextValue) =>
           onChange(updateChoiceSelection(value, String(nextValue), true, false))
         }
-        description={options?.helpText}
+        description={localizedString(options?.helpText, i18n) || undefined}
       >
         {choicesList.map((choice) => {
           const hasIcon = Boolean(choice.icon);
@@ -735,8 +779,10 @@ export function ChoicesField({
             <Radio.Item
               key={choice.value}
               value={choice.value}
-              label={hasIcon ? renderChoiceCardLabel(choice) : (choice.label ?? choice.value)}
-              description={hasIcon ? undefined : choice.description}
+              label={hasIcon ? renderChoiceCardLabel(choice, i18n) : choiceLabel(choice, i18n)}
+              description={
+                hasIcon ? undefined : localizedString(choice.description, i18n) || undefined
+              }
             />
           );
         })}

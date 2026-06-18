@@ -1,6 +1,6 @@
 {
   "name": "@bnomei/emdash-fields",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Structured JSON fields for EmDash, including object, structure, link, and choices editors.",
   "keywords": [
     "astro",

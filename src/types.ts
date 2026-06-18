@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import type { FieldsI18nConfig, LocalizedString } from "./i18n";
 
 export type FieldsSubFieldType =
   | "text"
@@ -11,8 +12,8 @@ export type FieldsSubFieldType =
 
 export type FieldsChoice = {
   value: string;
-  label?: string;
-  description?: string;
+  label?: LocalizedString;
+  description?: LocalizedString;
   /**
    * Display icon for a choice.
    *
@@ -25,27 +26,29 @@ export type FieldsChoice = {
 
 export type FieldsSubField = {
   key: string;
-  label: string;
+  label: LocalizedString;
   type?: FieldsSubFieldType;
   required?: boolean;
-  placeholder?: string;
-  suffix?: string;
+  placeholder?: LocalizedString;
+  suffix?: LocalizedString;
   options?: FieldsChoice[] | string[];
 };
 
 export type ObjectOptions = {
   fields: FieldsSubField[];
-  helpText?: string;
+  helpText?: LocalizedString;
+  i18n?: FieldsI18nConfig;
 };
 
 export type StructureOptions = {
   fields: FieldsSubField[];
-  itemLabel?: string;
+  itemLabel?: LocalizedString;
   min?: number;
   max?: number;
   sortable?: boolean;
-  summary?: string;
-  helpText?: string;
+  summary?: LocalizedString;
+  helpText?: LocalizedString;
+  i18n?: FieldsI18nConfig;
 };
 
 /** @deprecated Use FieldsSubFieldType. */
@@ -70,11 +73,16 @@ export type LinkValue = {
   target?: "_blank" | "_self";
 };
 
+export type LinkOptions = {
+  i18n?: FieldsI18nConfig;
+};
+
 export type ChoicesOptions = {
   choices?: FieldsChoice[] | string[];
   options?: FieldsChoice[] | string[];
   multiple?: boolean;
   orientation?: "vertical" | "horizontal";
   columns?: number;
-  helpText?: string;
+  helpText?: LocalizedString;
+  i18n?: FieldsI18nConfig;
 };
