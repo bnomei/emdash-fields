@@ -235,7 +235,8 @@ The package exports TypeScript helper types such as `LinkValue`, `ObjectOptions`
 ## Package Surface
 
 - ESM entry: `@bnomei/emdash-fields`.
-- Admin entry: `@bnomei/emdash-fields/admin`.
+- Admin entry: `@bnomei/emdash-fields/admin`, including the widget
+  components and pure value helpers used by those widgets.
 - Type declarations are included from `dist/`.
 - Peer dependencies: `emdash` `>=0.17.0`, `react` `^18.0.0 || ^19.0.0`,
   `react-dom` `^18.0.0 || ^19.0.0`, `@cloudflare/kumo` `^2.5.0`, and `@phosphor-icons/react`

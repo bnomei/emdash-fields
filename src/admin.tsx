@@ -275,8 +275,9 @@ function horizontalChoiceGridStyle(columns: number | undefined, total: number) {
   } satisfies CSSProperties;
 }
 
-function choiceInputId(id: string, value: string) {
-  return `${id}-${value.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+function choiceInputId(id: string, value: string, index: number) {
+  const safeValue = value.replace(/[^a-zA-Z0-9_-]/g, "-") || "choice";
+  return `${id}-${index}-${safeValue}`;
 }
 
 function isImageIcon(icon: unknown): icon is string {
@@ -349,12 +350,14 @@ function renderSubField(
   idPrefix: string,
 ) {
   const id = `${idPrefix}-${field.key}`;
+  const labelId = `${id}-label`;
   const type = field.type ?? "text";
   const commonProps = {
     id,
     name: field.key,
     required: field.required,
     placeholder: field.placeholder,
+    "aria-labelledby": labelId,
     value: typeof value === "string" || typeof value === "number" ? value : "",
     onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       onChange(readInputValue(event, type)),
@@ -365,7 +368,7 @@ function renderSubField(
   return (
     <div key={field.key} style={fieldStyle}>
       {type === "boolean" || type === "select" ? null : (
-        <label htmlFor={id} style={labelStyle}>
+        <label id={labelId} htmlFor={id} style={labelStyle}>
           {field.label}
         </label>
       )}
@@ -576,22 +579,24 @@ export function LinkField({
         />
       </div>
       <div style={fieldStyle}>
-        <label htmlFor={`${id}-value`} style={labelStyle}>
+        <label id={`${id}-value-label`} htmlFor={`${id}-value`} style={labelStyle}>
           Value
         </label>
         <Input
           id={`${id}-value`}
+          aria-labelledby={`${id}-value-label`}
           className="w-full"
           value={data.value ?? ""}
           onChange={(event) => update({ value: event.currentTarget.value })}
         />
       </div>
       <div style={fieldStyle}>
-        <label htmlFor={`${id}-text`} style={labelStyle}>
+        <label id={`${id}-text-label`} htmlFor={`${id}-text`} style={labelStyle}>
           Text
         </label>
         <Input
           id={`${id}-text`}
+          aria-labelledby={`${id}-text-label`}
           className="w-full"
           value={data.text ?? ""}
           onChange={(event) => update({ text: event.currentTarget.value })}
@@ -634,9 +639,9 @@ export function ChoicesField({
       <fieldset id={id} style={fieldsetStyle}>
         <legend style={legendStyle}>{legend}</legend>
         <div style={horizontalChoiceGridStyle(options?.columns, choicesList.length)}>
-          {choicesList.map((choice) => {
+          {choicesList.map((choice, index) => {
             const checked = selected.has(choice.value);
-            const inputId = choiceInputId(id, choice.value);
+            const inputId = choiceInputId(id, choice.value, index);
 
             return (
               <label
@@ -686,8 +691,8 @@ export function ChoicesField({
     return (
       <fieldset id={id} style={fieldsetStyle}>
         <legend style={legendStyle}>{legend}</legend>
-        {choicesList.map((choice) => {
-          const inputId = choiceInputId(id, choice.value);
+        {choicesList.map((choice, index) => {
+          const inputId = choiceInputId(id, choice.value, index);
 
           return (
             <label key={choice.value} htmlFor={inputId} style={checkboxChoiceRowStyle}>

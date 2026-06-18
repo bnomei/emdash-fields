@@ -31,7 +31,7 @@ export type FieldsDescriptorOptions = {
 };
 
 const PLUGIN_ID = "fields";
-const PLUGIN_VERSION = "0.1.0";
+const PLUGIN_VERSION = "0.1.1";
 const PACKAGE_NAME = "@bnomei/emdash-fields";
 
 export function fieldsPlugin(options: FieldsDescriptorOptions = {}): PluginDescriptor {

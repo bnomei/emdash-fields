@@ -1,24 +1,84 @@
-import { readFile } from "node:fs/promises";
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ChoicesField, LinkField, ObjectField } from "../dist/admin.mjs";
 
-const source = await readFile(new URL("../src/admin.tsx", import.meta.url), "utf8");
+function renderWithoutWarnings(element) {
+  const warnings = [];
+  const warn = console.warn;
+  console.warn = (...args) => warnings.push(args.join(" "));
+  try {
+    return { html: renderToStaticMarkup(element), warnings };
+  } finally {
+    console.warn = warn;
+  }
+}
 
-test("text-like subfields render visible labels connected to inputs", () => {
-  assert.match(source, /<label htmlFor=\{id\} style=\{labelStyle\}>/);
-  assert.match(source, /<Textarea \{\.\.\.commonProps\}/);
-  assert.match(source, /<Input\s+\{\.\.\.commonProps\}/);
+test("text-like subfields render connected labels without Kumo warnings", () => {
+  const { html, warnings } = renderWithoutWarnings(
+    React.createElement(ObjectField, {
+      value: {},
+      onChange() {},
+      options: {
+        fields: [
+          { key: "title", label: "Title", type: "text" },
+          { key: "summary", label: "Summary", type: "textarea" },
+          { key: "count", label: "Count", type: "number" },
+        ],
+      },
+    }),
+  );
+
+  assert.equal(warnings.length, 0);
+  assert.match(html, /<label id="fields-object-title-label" for="fields-object-title"/);
+  assert.match(html, /aria-labelledby="fields-object-title-label"/);
+  assert.match(html, /<label id="fields-object-summary-label" for="fields-object-summary"/);
+  assert.match(html, /aria-labelledby="fields-object-summary-label"/);
+  assert.match(html, /<label id="fields-object-count-label" for="fields-object-count"/);
+  assert.match(html, /aria-labelledby="fields-object-count-label"/);
 });
 
-test("link inputs and checkboxes use explicit label associations", () => {
-  assert.match(source, /<label htmlFor=\{`\$\{id\}-value`\} style=\{labelStyle\}>/);
-  assert.match(source, /<label htmlFor=\{`\$\{id\}-text`\} style=\{labelStyle\}>/);
-  assert.match(source, /<label htmlFor=\{`\$\{id\}-target`\} style=\{checkboxRowStyle\}>/);
+test("link inputs render connected labels without Kumo warnings", () => {
+  const { html, warnings } = renderWithoutWarnings(
+    React.createElement(LinkField, {
+      value: {},
+      onChange() {},
+    }),
+  );
+
+  assert.equal(warnings.length, 0);
+  assert.match(html, /<label id="fields-link-value-label" for="fields-link-value"/);
+  assert.match(html, /aria-labelledby="fields-link-value-label"/);
+  assert.match(html, /<label id="fields-link-text-label" for="fields-link-text"/);
+  assert.match(html, /aria-labelledby="fields-link-text-label"/);
+  assert.match(html, /<label for="fields-link-target"/);
+  assert.match(html, /id="fields-link-target"/);
 });
 
-test("choice collections expose semantic groups and labelled controls", () => {
-  assert.match(source, /<fieldset id=\{id\} style=\{fieldsetStyle\}>/);
-  assert.match(source, /<legend style=\{legendStyle\}>\{legend\}<\/legend>/);
-  assert.match(source, /htmlFor=\{inputId\}/);
-  assert.match(source, /id=\{inputId\}/);
+test("choice collections expose semantic groups and unique labelled controls", () => {
+  const { html } = renderWithoutWarnings(
+    React.createElement(ChoicesField, {
+      value: [],
+      onChange() {},
+      id: "choices",
+      options: {
+        multiple: true,
+        choices: [
+          { value: "a/b", label: "Slash" },
+          { value: "a-b", label: "Dash" },
+        ],
+      },
+    }),
+  );
+
+  assert.match(html, /<fieldset id="choices"/);
+  assert.match(html, /<legend[^>]*>Choices<\/legend>/);
+  assert.match(html, /<label for="choices-0-a-b"/);
+  assert.match(html, /id="choices-0-a-b"/);
+  assert.match(html, /<label for="choices-1-a-b"/);
+  assert.match(html, /id="choices-1-a-b"/);
+  const inputIds = [...html.matchAll(/<input[^>]+id="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(inputIds, ["choices-0-a-b", "choices-1-a-b"]);
+  assert.equal(new Set(inputIds).size, inputIds.length);
 });

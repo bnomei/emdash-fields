@@ -1,6 +1,6 @@
 {
   "name": "@bnomei/emdash-fields",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Structured JSON fields for EmDash, including object, structure, link, and choices editors.",
   "keywords": [
     "astro",
@@ -49,7 +49,7 @@
     "check": "vp check .",
     "pack:check": "vp pack src/index.ts src/admin.tsx --format esm --dts --clean --tsconfig tsconfig.json --publint",
     "prepack": "npm run build",
-    "prepublishOnly": "npm run check && npm run typecheck && npm run pack:check && npm run types:check",
+    "prepublishOnly": "npm run check && npm run typecheck && npm test && npm run pack:check && npm run types:check",
     "types:check": "attw --pack . --profile esm-only --no-summary",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/*.test.mjs tests/*.test.mjs"
