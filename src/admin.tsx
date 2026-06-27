@@ -255,7 +255,18 @@ export function normalizeChoiceSelection(value: unknown, multiple: boolean): str
       : [];
   }
 
-  return typeof value === "string" ? [value] : [];
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    const first = value.find((item): item is string => typeof item === "string");
+    return first === undefined ? [] : [first];
+  }
+  return [];
+}
+
+export function normalizeSingleChoice(value: unknown): string {
+  return normalizeChoiceSelection(value, false)[0] ?? "";
 }
 
 export function updateChoiceSelection(
@@ -777,7 +788,7 @@ export function ChoicesField({
       <Radio.Group
         legend={legend}
         appearance="card"
-        value={typeof value === "string" ? value : ""}
+        value={normalizeSingleChoice(value)}
         onValueChange={(nextValue) =>
           onChange(updateChoiceSelection(value, String(nextValue), true, false))
         }

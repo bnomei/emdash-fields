@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:255 | single-choice-array-deselected
 
 # Single-choice widget ignores array stored values
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. A one-element (or multi-element) string array is a representable legacy shape (e.g. after switching `multiple: true → false`), so it is coerced to its first string value. `normalizeChoiceSelection(value, false)` now extracts the first string element from an array, which fixes the horizontal single-choice renderer's `selected` set. The vertical `Radio.Group` derived its value separately (`typeof value === "string" ? value : ""`) and is now fed by a new exported `normalizeSingleChoice(value)` helper so it reflects the coerced selection too. `updateChoiceSelection`'s single-mode deselect path also benefits via the same normalization. Added regression tests. Full suite (25 tests) passes.
 
 DEVANA-KEY: src/admin.tsx:255 | single-choice-array-deselected
-DEVANA-SUMMARY: open | P2 | medium | Single-choice fields show no selection for array stored values while the array remains in parent state.
+DEVANA-SUMMARY: fixed | P2 | medium | Single-choice fields show no selection for array stored values while the array remains in parent state.

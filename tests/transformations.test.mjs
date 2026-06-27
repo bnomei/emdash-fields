@@ -6,6 +6,7 @@ import {
   moveStructureItem,
   normalizeChoices,
   normalizeChoiceSelection,
+  normalizeSingleChoice,
   normalizeLinkValue,
   normalizeObjectValue,
   normalizeStructureValue,
@@ -135,4 +136,15 @@ test("single choice selections normalize to the selected string", () => {
   assert.deepEqual(normalizeChoiceSelection("alpha", false), ["alpha"]);
   assert.equal(updateChoiceSelection("alpha", "beta", true, false), "beta");
   assert.equal(updateChoiceSelection(undefined, "beta", false, false), "");
+});
+
+test("single choice mode coerces array stored values to their first string", () => {
+  assert.deepEqual(normalizeChoiceSelection(["alpha"], false), ["alpha"]);
+  assert.deepEqual(normalizeChoiceSelection(["alpha", "beta"], false), ["alpha"]);
+  assert.deepEqual(normalizeChoiceSelection([42, "beta"], false), ["beta"]);
+  assert.deepEqual(normalizeChoiceSelection([], false), []);
+  assert.equal(normalizeSingleChoice(["alpha"]), "alpha");
+  assert.equal(normalizeSingleChoice("alpha"), "alpha");
+  assert.equal(normalizeSingleChoice(undefined), "");
+  assert.equal(normalizeSingleChoice([]), "");
 });
