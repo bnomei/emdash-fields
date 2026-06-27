@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:383 | number-subfield-string-persists
 
 # Number subfields round-trip non-number stored values unchanged
@@ -50,7 +50,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 
 ## Status Notes
 
-- 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed (display/interpretation; intentionally no mount-time write). Numeric subfields now route their committed value through a new exported `interpretNumericValue(value, type)`: quoted numeric strings (common in YAML/JSON, e.g. `{count: "42"}`) are coerced so they display as numbers and any edit emits a real `Number`, while off-type shapes (a non-integer for an `integer` field, non-finite numbers, non-scalars) clear to `undefined` (blank) per the report's suggested remedy. This also fixes a regression introduced by the numeric-keystroke-intermediate-loss refactor, where `NumericSubField` treated only `typeof value === "number"` as committed and so blanked a stored numeric string; a stored "42" now correctly renders "42" again. No mount `onChange` is added — consistent with the project's avoidance of spurious dirty state — so an untouched off-type value is shown per the interpretation but the raw stored value is only rewritten when the user edits the field. Added unit tests for `interpretNumericValue` and an SSR test asserting `{count:"42"}` renders `value="42"`; typecheck clean; full suite (36 tests) passes. See [[numeric-keystroke-intermediate-loss]].
 
 DEVANA-KEY: src/admin.tsx:383 | number-subfield-string-persists
-DEVANA-SUMMARY: open | P2 | medium | Number and integer subfields display string or non-integer stored values and persist them until the user edits the field.
+DEVANA-SUMMARY: fixed | P2 | medium | Number and integer subfields display string or non-integer stored values and persist them until the user edits the field.

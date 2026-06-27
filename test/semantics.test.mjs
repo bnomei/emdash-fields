@@ -39,6 +39,20 @@ test("text-like subfields render connected labels without Kumo warnings", () => 
   assert.match(html, /aria-labelledby="fields-object-count-label"/);
 });
 
+test("number subfield displays a quoted numeric string value", () => {
+  const { html } = renderWithoutWarnings(
+    React.createElement(ObjectField, {
+      value: { count: "42" },
+      onChange() {},
+      options: {
+        fields: [{ key: "count", label: "Count", type: "number" }],
+      },
+    }),
+  );
+
+  assert.match(html, /value="42"/);
+});
+
 test("link inputs render connected labels without Kumo warnings", () => {
   const { html, warnings } = renderWithoutWarnings(
     React.createElement(LinkField, {

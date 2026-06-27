@@ -442,6 +442,27 @@ export function parseNumericInput(value: string, type: "number" | "integer") {
   return numericValue;
 }
 
+/**
+ * Interpret a stored subfield value as the number it represents for the given
+ * type, or `undefined` when it is not a valid value. Coerces numeric strings
+ * (common in quoted YAML/JSON) so they display as numbers, and rejects off-type
+ * shapes (non-integers for `integer`, non-finite numbers, non-scalars).
+ */
+export function interpretNumericValue(
+  value: unknown,
+  type: "number" | "integer",
+): number | undefined {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return undefined;
+    if (type === "integer" && !Number.isInteger(value)) return undefined;
+    return value;
+  }
+  if (typeof value === "string") {
+    return parseNumericInput(value, type);
+  }
+  return undefined;
+}
+
 export type NumericCommit =
   | { type: "set"; value: number }
   | { type: "clear" }
@@ -483,7 +504,7 @@ function NumericSubField({
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
-  const committed = typeof value === "number" ? value : undefined;
+  const committed = interpretNumericValue(value, type);
   const valueString = committed === undefined ? "" : String(committed);
   const [draft, setDraft] = useState(valueString);
 
