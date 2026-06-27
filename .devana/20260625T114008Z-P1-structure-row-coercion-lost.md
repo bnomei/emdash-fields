@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P1 | high | security=no
+DEVANA-STATE: wontfix | P1 | high | security=no
 DEVANA-KEY: src/admin.tsx:187 | structure-row-coercion-lost
 
 # Structure field drops invalid row payloads on first mutation
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: wontfix. Same class as object-invalid-root-lost. Verified `addStructureItem([{label:"A"},["secret"]])` yields `[{label:"A"},{},{}]`, dropping the array row, while object rows keep extra keys (`updateStructureItem` preserves `{label,extra}`). The only data lost is a non-object row, which the per-row object editor cannot represent. The library's documented and tested invariant is "structure values normalize every row to an object" — preserving an array/scalar row would mean persisting mixed-type rows that violate that contract and would still render empty and be uneditable. Loss occurs only on an explicit mutation, never on load. The suggested mount-time writeback drops the same unrepresentable data earlier and marks entries dirty on open. Left intentional.
 
 DEVANA-KEY: src/admin.tsx:187 | structure-row-coercion-lost
-DEVANA-SUMMARY: open | P1 | high | First structure mutation persists normalized rows and drops invalid row payloads that were still in parent state.
+DEVANA-SUMMARY: wontfix | P1 | high | First structure mutation persists normalized rows and drops invalid row payloads that were still in parent state.
