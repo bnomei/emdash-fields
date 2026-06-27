@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:423 | select-subfield-non-string-hidden
 
 # Object select subfields hide non-string stored values
@@ -47,6 +47,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed (display coercion). The select branch now derives its value via a new exported `selectSubfieldValue(value)` that stringifies a stored number (the realistic legacy numeric-JSON case, e.g. `{tone: 1}` against options `["1","2"]`) so it can match a string option and render as selected, mirroring how text subfields already accept numbers. Non-scalar values (arrays/objects) have no option to match and still render blank, which is the correct display. No mount-time `onChange` is added, consistent with the project's avoidance of spurious dirty state — a genuine re-select still writes a clean string. Note: when the stored value matches no option (e.g. `1` vs `["Calm","Bold"]`), blank remains correct; coercion only helps when the stringified value is an actual option. Added a unit test; typecheck clean; full suite (34 tests) passes. Related: [[single-choice-array-deselected]].
 
 DEVANA-KEY: src/admin.tsx:423 | select-subfield-non-string-hidden
-DEVANA-SUMMARY: open | P2 | medium | Select subfields show empty when stored values are not strings, while parent JSON keeps the non-string payload.
+DEVANA-SUMMARY: fixed | P2 | medium | Select subfields show empty when stored values are not strings, while parent JSON keeps the non-string payload.

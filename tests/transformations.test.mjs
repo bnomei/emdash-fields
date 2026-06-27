@@ -13,6 +13,7 @@ import {
   normalizeObjectValue,
   normalizeStructureValue,
   removeStructureItem,
+  selectSubfieldValue,
   updateChoiceSelection,
   updateLinkValue,
   updateObjectValue,
@@ -200,6 +201,16 @@ test("coerceBoolean parses quoted booleans for option flags", () => {
   assert.equal(coerceBoolean(true), true);
   assert.equal(coerceBoolean(false), false);
   assert.equal(coerceBoolean(undefined), false);
+});
+
+test("select subfield value stringifies numbers and blanks non-scalars", () => {
+  assert.equal(selectSubfieldValue("Calm"), "Calm");
+  assert.equal(selectSubfieldValue(1), "1");
+  assert.equal(selectSubfieldValue(0), "0");
+  assert.equal(selectSubfieldValue(undefined), "");
+  assert.equal(selectSubfieldValue(null), "");
+  assert.equal(selectSubfieldValue(["Calm"]), "");
+  assert.equal(selectSubfieldValue({ value: "Calm" }), "");
 });
 
 test("boolean subfield checked state ignores truthy string false", () => {

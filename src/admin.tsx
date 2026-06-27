@@ -415,6 +415,16 @@ export function isBooleanChecked(value: unknown): boolean {
   return coerceBoolean(value);
 }
 
+export function selectSubfieldValue(value: unknown): string {
+  // Mirror the leniency of text inputs: a stored number (legacy numeric JSON)
+  // is stringified so it can match a string option value and render as selected,
+  // instead of always falling back to the blank placeholder. Non-scalar values
+  // have no option to match and stay blank.
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
 export function parseNumericInput(value: string, type: "number" | "integer") {
   if (value.trim() === "") {
     return undefined;
@@ -586,7 +596,7 @@ function renderSubField(
               label: choiceLabel(choice, i18n),
             })),
           ]}
-          value={typeof value === "string" ? value : ""}
+          value={selectSubfieldValue(value)}
           onValueChange={(nextValue) => onChange(String(nextValue))}
         />
       ) : type === "number" || type === "integer" ? (
