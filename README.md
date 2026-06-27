@@ -164,6 +164,13 @@ Structure field:
 }
 ```
 
+The structure widget also accepts `min` and `max` row counts. These constrain
+the interactive controls — the Add button is disabled at `max` and the Remove
+button is disabled at `min` — guiding editors back within bounds. They are not
+enforced on externally supplied values: a stored array outside the limits is
+shown as-is rather than silently trimmed (which would drop data) or padded with
+empty rows (which would dirty the entry on open).
+
 Choices with horizontal cards:
 
 ```json

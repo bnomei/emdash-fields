@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: wontfix | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:504 | structure-min-max-bypass
 
 # Structure min and max not enforced on loaded values
@@ -45,6 +45,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: wontfix (code) + documented. The suggested auto-clamp is harmful: trimming an above-`max` array silently deletes loaded rows (the same silent data loss the P1 root-coercion findings flag), and padding a below-`min` array seeds empty rows that mark the entry dirty on open with no user action. The current design is the safe one — `min`/`max` gate the interactive controls (Add disabled at `max`, Remove disabled at `min`) while still letting the editor reach compliance (Remove stays enabled above `max`, Add stays enabled below `min`), and externally supplied out-of-bounds arrays are shown rather than mutated. Took the report's second remedy: documented these semantics in README.md (min/max constrain the controls, are not enforced on supplied values). Build/typecheck unaffected (docs only).
 
 DEVANA-KEY: src/admin.tsx:504 | structure-min-max-bypass
-DEVANA-SUMMARY: open | P2 | medium | Structure `min`/`max` gate buttons only; loaded or edited arrays outside bounds persist unchanged.
+DEVANA-SUMMARY: wontfix | P2 | medium | Structure `min`/`max` gate buttons only; loaded or edited arrays outside bounds persist unchanged.
