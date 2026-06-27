@@ -14,6 +14,7 @@ import {
   normalizeStructureValue,
   removeStructureItem,
   selectSubfieldValue,
+  shouldNormalizeLinkValue,
   updateChoiceSelection,
   updateLinkValue,
   updateObjectValue,
@@ -114,6 +115,18 @@ test("link values drop type and target outside the documented unions", () => {
     value: "a@b.c",
     target: "_blank",
   });
+});
+
+test("link values report when load-time normalization should be emitted", () => {
+  assert.equal(
+    shouldNormalizeLinkValue({ type: "javascript", value: "https://x" }),
+    true,
+  );
+  assert.equal(shouldNormalizeLinkValue({ type: "url", value: "https://x" }), false);
+  assert.equal(shouldNormalizeLinkValue("https://x"), true);
+  assert.equal(shouldNormalizeLinkValue(""), false);
+  assert.equal(shouldNormalizeLinkValue(42), false);
+  assert.equal(shouldNormalizeLinkValue(["bad"]), false);
 });
 
 test("link field preserves a scalar URL root through the first edit", () => {

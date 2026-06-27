@@ -8,7 +8,7 @@ import {
   type FieldsI18nConfig,
   type LocalizedString,
 } from "./i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import type {
   ChoicesOptions,
@@ -31,6 +31,18 @@ type FieldWidgetProps<TOptions = Record<string, unknown>> = {
 };
 
 type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function jsonValueSignature(value: unknown): string {
+  return JSON.stringify(value) ?? "undefined";
+}
+
+function jsonValuesEqual(left: unknown, right: unknown): boolean {
+  return jsonValueSignature(left) === jsonValueSignature(right);
+}
 
 const wrapperStyle = {
   display: "grid",
@@ -177,8 +189,33 @@ function useFieldI18n(i18n: FieldsI18nConfig | undefined): FieldsI18nConfig {
   return { ...i18n, locale };
 }
 
+function useNormalizedOnChange(
+  value: unknown,
+  normalizedValue: unknown,
+  onChange: (value: unknown) => void,
+  enabled: boolean,
+) {
+  const lastEmittedSignature = useRef<string | null>(null);
+  const rawSignature = jsonValueSignature(value);
+  const normalizedSignature = jsonValueSignature(normalizedValue);
+
+  useEffect(() => {
+    if (!enabled || rawSignature === normalizedSignature) {
+      return;
+    }
+
+    const emissionSignature = `${rawSignature}->${normalizedSignature}`;
+    if (lastEmittedSignature.current === emissionSignature) {
+      return;
+    }
+
+    lastEmittedSignature.current = emissionSignature;
+    onChange(normalizedValue);
+  }, [enabled, normalizedSignature, normalizedValue, onChange, rawSignature]);
+}
+
 export function normalizeObjectValue(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+  return isJsonRecord(value) ? value : {};
 }
 
 export function updateObjectValue(value: unknown, key: string, nextValue: unknown): JsonRecord {
@@ -271,6 +308,16 @@ export function normalizeLinkValue(value: unknown): LinkValue {
     delete next.target;
   }
   return next as LinkValue;
+}
+
+export function shouldNormalizeLinkValue(value: unknown): boolean {
+  if (typeof value !== "string" && !isJsonRecord(value)) {
+    return false;
+  }
+  if (value === "") {
+    return false;
+  }
+  return !jsonValuesEqual(value, normalizeLinkValue(value));
 }
 
 export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): LinkValue {
@@ -801,6 +848,7 @@ export function LinkField({
 }: FieldWidgetProps<LinkOptions>) {
   const i18n = useFieldI18n(options?.i18n);
   const data = normalizeLinkValue(value);
+  useNormalizedOnChange(value, data, onChange, shouldNormalizeLinkValue(value));
 
   function update(nextValue: Partial<LinkValue>) {
     onChange(updateLinkValue(data, nextValue));
