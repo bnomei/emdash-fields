@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   addStructureItem,
   coerceBoolean,
+  effectiveStructureBounds,
   isBooleanChecked,
   moveStructureItem,
   normalizeChoices,
@@ -59,6 +60,17 @@ test("structure updates, adds, removes, and reorders rows immutably", () => {
     { label: "B" },
   ]);
   assert.deepEqual(source, [{ label: "A" }, { label: "B" }, { label: "C" }]);
+});
+
+test("structure bounds clamp a contradictory min greater than max", () => {
+  assert.deepEqual(effectiveStructureBounds(5, 2), { min: 2, max: 2 });
+  assert.deepEqual(effectiveStructureBounds(1, 3), { min: 1, max: 3 });
+  assert.deepEqual(effectiveStructureBounds(undefined, 3), { min: undefined, max: 3 });
+  assert.deepEqual(effectiveStructureBounds(2, undefined), { min: 2, max: undefined });
+  assert.deepEqual(effectiveStructureBounds(undefined, undefined), {
+    min: undefined,
+    max: undefined,
+  });
 });
 
 test("structure transformations ignore out-of-range item indexes", () => {

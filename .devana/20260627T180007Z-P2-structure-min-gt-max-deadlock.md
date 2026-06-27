@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:537 | structure-min-gt-max-deadlock
 
 # Structure min greater than max deadlocks the editor
@@ -47,6 +47,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed via the report's "derive effective bounds" remedy rather than a config-error message (a hard error would block all editing, and a new i18n key carries locale/test surface). Added a pure exported `effectiveStructureBounds(min, max)` that, when `min > max`, clamps the floor to the ceiling (`{min: max, max: max}`) so the editor settles at exactly `max` instead of locking with both Add and Remove disabled below an unreachable floor. `StructureField` now drives both button `disabled` guards from these reconciled bounds. Valid configs (`min <= max`, or only one set) are unchanged. Added a unit test; typecheck clean; full suite (32 tests) passes. Related: [[structure-min-max-bypass]].
 
 DEVANA-KEY: src/admin.tsx:537 | structure-min-gt-max-deadlock
-DEVANA-SUMMARY: open | P2 | medium | When `min > max`, structure add and remove can both disable and leave the editor stuck below `min`.
+DEVANA-SUMMARY: fixed | P2 | medium | When `min > max`, structure add and remove can both disable and leave the editor stuck below `min`.

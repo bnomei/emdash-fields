@@ -185,6 +185,21 @@ export function updateObjectValue(value: unknown, key: string, nextValue: unknow
   return { ...normalizeObjectValue(value), [key]: nextValue };
 }
 
+export function effectiveStructureBounds(
+  min?: number,
+  max?: number,
+): { min?: number; max?: number } {
+  const safeMin = typeof min === "number" ? min : undefined;
+  const safeMax = typeof max === "number" ? max : undefined;
+  // A contradictory `min > max` config would disable both Add and Remove at
+  // `max`, locking the editor below an unreachable floor. Clamp the floor to the
+  // ceiling so the field can settle at exactly `max` instead of deadlocking.
+  if (safeMin !== undefined && safeMax !== undefined && safeMin > safeMax) {
+    return { min: safeMax, max: safeMax };
+  }
+  return { min: safeMin, max: safeMax };
+}
+
 export function normalizeStructureValue(value: unknown): JsonRecord[] {
   return Array.isArray(value) ? value.map((item) => normalizeObjectValue(item)) : [];
 }
@@ -664,6 +679,7 @@ export function StructureField({
   const fields = options?.fields ?? [];
   const itemLabel = localizedString(options?.itemLabel, i18n, fieldMessage("item", i18n));
   const sortable = options?.sortable !== false;
+  const bounds = effectiveStructureBounds(options?.min, options?.max);
 
   if (!fields.length) {
     return <p>{fieldMessage("structureRequiresFields", i18n)}</p>;
@@ -693,7 +709,7 @@ export function StructureField({
               size="sm"
               variant="secondary-destructive"
               icon={TrashIcon}
-              disabled={typeof options?.min === "number" && items.length <= options.min}
+              disabled={typeof bounds.min === "number" && items.length <= bounds.min}
               onClick={() => updateItems(removeStructureItem(items, index))}
             >
               {fieldMessage("remove", i18n)}
@@ -728,7 +744,7 @@ export function StructureField({
         size="sm"
         className={fullWidthButtonClassName}
         icon={PlusIcon}
-        disabled={typeof options?.max === "number" && items.length >= options.max}
+        disabled={typeof bounds.max === "number" && items.length >= bounds.max}
         onClick={() => updateItems(addStructureItem(items))}
       >
         {formatFieldMessage("addItem", i18n, { item: itemLabel })}
