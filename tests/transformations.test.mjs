@@ -91,7 +91,6 @@ test("link values normalize invalid inputs and merge partial updates", () => {
   assert.deepEqual(normalizeLinkValue(42), {});
   assert.deepEqual(normalizeLinkValue(["bad"]), {});
   assert.deepEqual(normalizeLinkValue(""), {});
-  // a bare string root is preserved as the link's URL value
   assert.deepEqual(normalizeLinkValue("https://example.com"), { value: "https://example.com" });
 
   assert.deepEqual(
@@ -150,15 +149,12 @@ test("choices normalize string and object options", () => {
 });
 
 test("choices guarantee a string value for object choices", () => {
-  // string-label fallback when value is missing
   assert.deepEqual(normalizeChoices([{ label: "Workers AI", icon: "AI" }]), [
     { value: "Workers AI", label: "Workers AI", icon: "AI" },
   ]);
-  // malformed choice with no value and non-string label is dropped, valid kept
   assert.deepEqual(normalizeChoices([{ icon: "AI" }, { value: "ok", label: "Ok" }]), [
     { value: "ok", label: "Ok" },
   ]);
-  // every returned choice has a string value
   for (const choice of normalizeChoices(["a", { label: "B" }, { value: "c" }])) {
     assert.equal(typeof choice.value, "string");
   }

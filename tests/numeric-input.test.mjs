@@ -37,13 +37,10 @@ test("integer input accepts integers and rejects decimals", () => {
 });
 
 test("numeric interpretation coerces strings and rejects off-type values", () => {
-  // quoted numeric strings display as numbers
   assert.equal(interpretNumericValue("42", "number"), 42);
   assert.equal(interpretNumericValue("42", "integer"), 42);
   assert.equal(interpretNumericValue("3.14", "number"), 3.14);
-  // already-valid numbers pass through
   assert.equal(interpretNumericValue(7, "integer"), 7);
-  // off-type / invalid shapes clear to undefined
   assert.equal(interpretNumericValue("3.14", "integer"), undefined);
   assert.equal(interpretNumericValue(3.14, "integer"), undefined);
   assert.equal(interpretNumericValue(Infinity, "number"), undefined);
@@ -53,17 +50,11 @@ test("numeric interpretation coerces strings and rejects off-type values", () =>
 });
 
 test("numeric commit holds in-progress drafts instead of wiping the value", () => {
-  // empty clears
   assert.deepEqual(numericChangeCommit("", "number"), { type: "clear" });
   assert.deepEqual(numericChangeCommit("   ", "integer"), { type: "clear" });
-  // complete numbers commit
   assert.deepEqual(numericChangeCommit("3.14", "number"), { type: "set", value: 3.14 });
   assert.deepEqual(numericChangeCommit("-5", "integer"), { type: "set", value: -5 });
-  // "3." parses to 3, so it commits; the visible "3." is preserved by the
-  // component's draft state so the user can continue typing "3.14"
   assert.deepEqual(numericChangeCommit("3.", "number"), { type: "set", value: 3 });
-  // lone minus while starting a negative number holds (no commit, no wipe)
   assert.deepEqual(numericChangeCommit("-", "integer"), { type: "hold" });
-  // transient decimal on an integer field holds rather than clearing the value
   assert.deepEqual(numericChangeCommit("12.3", "integer"), { type: "hold" });
 });

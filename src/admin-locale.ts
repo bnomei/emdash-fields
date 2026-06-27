@@ -1,8 +1,15 @@
+/**
+ * Admin UI locale from the EmDash `emdash-locale` cookie.
+ *
+ * Widgets use this when options omit an explicit locale so labels track the
+ * signed-in admin language.
+ */
 import { useEffect, useState } from "react";
 import { DEFAULT_LOCALE, normalizeLocale } from "./i18n";
 
 const LOCALE_COOKIE_NAME = "emdash-locale";
 
+/** Reads the current admin locale from `document.cookie`, with SSR-safe fallback. */
 export function readAdminLocale(fallback = DEFAULT_LOCALE): string {
   const normalizedFallback = normalizeLocale(fallback);
 
@@ -23,6 +30,7 @@ export function readAdminLocale(fallback = DEFAULT_LOCALE): string {
   }
 }
 
+/** Reactive admin locale that resyncs on focus and a short polling interval. */
 export function useAdminLocale(fallback = DEFAULT_LOCALE): string {
   const [locale, setLocale] = useState(() => readAdminLocale(fallback));
 

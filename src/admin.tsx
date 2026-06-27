@@ -1,3 +1,10 @@
+/**
+ * React field widgets and pure normalization for structured JSON values.
+ *
+ * Widgets coerce persisted JSON into editor-safe shapes on mount and emit
+ * normalized values through `onChange`; exported helpers support tests and
+ * custom integrations outside the default widget bundle.
+ */
 import { Button, Input, Radio, Select, Textarea } from "@cloudflare/kumo";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useAdminLocale } from "./admin-locale";
@@ -189,6 +196,7 @@ function useFieldI18n(i18n: FieldsI18nConfig | undefined): FieldsI18nConfig {
   return { ...i18n, locale };
 }
 
+/** One-shot load-time emit: pushes normalized JSON upstream when storage diverges. */
 function useNormalizedOnChange(
   value: unknown,
   normalizedValue: unknown,
@@ -214,37 +222,41 @@ function useNormalizedOnChange(
   }, [enabled, normalizedSignature, normalizedValue, onChange, rawSignature]);
 }
 
+/** Coerces unknown roots to a plain object; non-objects become `{}`. */
 export function normalizeObjectValue(value: unknown): JsonRecord {
   return isJsonRecord(value) ? value : {};
 }
 
+/** Immutable single-key update on a normalized object value. */
 export function updateObjectValue(value: unknown, key: string, nextValue: unknown): JsonRecord {
   return { ...normalizeObjectValue(value), [key]: nextValue };
 }
 
+/** Resolves structure min/max; clamps min to max when the config contradicts itself. */
 export function effectiveStructureBounds(
   min?: number,
   max?: number,
 ): { min?: number; max?: number } {
   const safeMin = typeof min === "number" ? min : undefined;
   const safeMax = typeof max === "number" ? max : undefined;
-  // A contradictory `min > max` config would disable both Add and Remove at
-  // `max`, locking the editor below an unreachable floor. Clamp the floor to the
-  // ceiling so the field can settle at exactly `max` instead of deadlocking.
+  // min > max would disable both add and remove at max — clamp to a reachable floor.
   if (safeMin !== undefined && safeMax !== undefined && safeMin > safeMax) {
     return { min: safeMax, max: safeMax };
   }
   return { min: safeMin, max: safeMax };
 }
 
+/** Coerces unknown roots to an array of object rows; non-arrays become `[]`. */
 export function normalizeStructureValue(value: unknown): JsonRecord[] {
   return Array.isArray(value) ? value.map((item) => normalizeObjectValue(item)) : [];
 }
 
+/** Appends an empty object row to a structure value. */
 export function addStructureItem(value: unknown): JsonRecord[] {
   return [...normalizeStructureValue(value), {}];
 }
 
+/** Replaces one structure row; out-of-range indexes return the source unchanged. */
 export function updateStructureItem(
   value: unknown,
   index: number,
@@ -260,10 +272,12 @@ export function updateStructureItem(
   return nextItems;
 }
 
+/** Removes one structure row by index. */
 export function removeStructureItem(value: unknown, index: number): JsonRecord[] {
   return normalizeStructureValue(value).filter((_item, itemIndex) => itemIndex !== index);
 }
 
+/** Reorders one structure row; invalid indexes return the source unchanged. */
 export function moveStructureItem(
   value: unknown,
   fromIndex: number,
@@ -287,17 +301,13 @@ export function moveStructureItem(
 const LINK_TYPES = ["url", "email", "tel", "entry", "media"] as const;
 const LINK_TARGETS = ["_blank", "_self"] as const;
 
+/** Coerces link JSON for editing; scalar URL strings map to `{ value }`. */
 export function normalizeLinkValue(value: unknown): LinkValue {
-  // A bare string root maps naturally to the link's URL value, so preserve and
-  // surface it instead of discarding it on the first edit. Other non-object
-  // roots have no field mapping and normalize to an empty link.
   if (typeof value === "string") {
     return value ? { value } : {};
   }
-  // Drop `type`/`target` values outside their documented unions so stored JSON
-  // cannot diverge from what the controls display (the select/checkbox fall back
-  // to their defaults) and the alien value clears on the next save.
   const next = { ...normalizeObjectValue(value) } as Record<string, unknown>;
+  // Strip type/target outside documented unions so controls and storage stay aligned.
   if (typeof next.type !== "string" || !(LINK_TYPES as readonly string[]).includes(next.type)) {
     delete next.type;
   }
@@ -310,6 +320,7 @@ export function normalizeLinkValue(value: unknown): LinkValue {
   return next as LinkValue;
 }
 
+/** Whether load-time link normalization would change the stored value. */
 export function shouldNormalizeLinkValue(value: unknown): boolean {
   if (typeof value !== "string" && !isJsonRecord(value)) {
     return false;
@@ -320,10 +331,12 @@ export function shouldNormalizeLinkValue(value: unknown): boolean {
   return !jsonValuesEqual(value, normalizeLinkValue(value));
 }
 
+/** Immutable partial merge on a normalized link value. */
 export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): LinkValue {
   return { ...normalizeLinkValue(value), ...nextValue };
 }
 
+/** Normalizes choice config to `{ value, label }` objects and drops duplicate values. */
 export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoice[] {
   const seen = new Set<string>();
   const result: FieldsChoice[] = [];
@@ -334,14 +347,9 @@ export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoic
     } else if (typeof choice.value === "string") {
       normalized = choice;
     } else if (typeof choice.label === "string") {
-      // Object choices authored in serialized JSON/YAML can omit the required
-      // `value`. Synthesize one from a string label when possible, otherwise the
-      // malformed choice is skipped so a single bad option cannot crash the widget.
+      // Serialized choices may omit `value`; synthesize from label or skip malformed rows.
       normalized = { ...choice, value: choice.label };
     }
-    // Selection is keyed by `value`, so two choices sharing a value are a single
-    // logical token that cannot be selected independently. Drop later duplicates
-    // to avoid React key collisions and mirrored checked state.
     if (!normalized || seen.has(normalized.value)) {
       continue;
     }
@@ -351,6 +359,7 @@ export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoic
   return result;
 }
 
+/** Coerces stored choice values to a deduped string selection for the widget mode. */
 export function normalizeChoiceSelection(value: unknown, multiple: boolean): string[] {
   if (multiple) {
     if (typeof value === "string") {
@@ -371,10 +380,12 @@ export function normalizeChoiceSelection(value: unknown, multiple: boolean): str
   return [];
 }
 
+/** First string choice for single-select mode, or `""` when none apply. */
 export function normalizeSingleChoice(value: unknown): string {
   return normalizeChoiceSelection(value, false)[0] ?? "";
 }
 
+/** Toggles or replaces the stored choice value for single- or multi-select mode. */
 export function updateChoiceSelection(
   value: unknown,
   choiceValue: string,
@@ -450,6 +461,7 @@ function choiceLabel(choice: FieldsChoice, i18n: FieldsI18nConfig) {
   return localizedString(choice.label, i18n, choice.value);
 }
 
+/** Parses quoted `"true"` / `"false"` flags from serialized widget options. */
 export function coerceBoolean(value: unknown): boolean {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
@@ -458,20 +470,19 @@ export function coerceBoolean(value: unknown): boolean {
   return Boolean(value);
 }
 
+/** Checkbox checked state; treats string `"false"` as unchecked. */
 export function isBooleanChecked(value: unknown): boolean {
   return coerceBoolean(value);
 }
 
+/** Display string for a select subfield; numbers stringify, non-scalars become `""`. */
 export function selectSubfieldValue(value: unknown): string {
-  // Mirror the leniency of text inputs: a stored number (legacy numeric JSON)
-  // is stringified so it can match a string option value and render as selected,
-  // instead of always falling back to the blank placeholder. Non-scalar values
-  // have no option to match and stay blank.
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
   return "";
 }
 
+/** Select subfield value kept only when it matches a configured option. */
 export function normalizeSelectSubfieldValue(
   value: unknown,
   choices: FieldsChoice[] | string[] | undefined,
@@ -481,6 +492,7 @@ export function normalizeSelectSubfieldValue(
   return normalizeChoices(choices).some((choice) => choice.value === nextValue) ? nextValue : "";
 }
 
+/** Load-time coercion for one subfield based on its declared type. */
 export function normalizeSubfieldStoredValue(field: FieldsSubField, value: unknown): unknown {
   const type = field.type ?? "text";
   if (type === "select") {
@@ -492,6 +504,7 @@ export function normalizeSubfieldStoredValue(field: FieldsSubField, value: unkno
   return value;
 }
 
+/** Load-time coercion of configured subfield keys on a single object row. */
 export function normalizeObjectSubfieldValues(
   value: unknown,
   fields: FieldsSubField[],
@@ -515,6 +528,7 @@ export function normalizeObjectSubfieldValues(
   return nextData;
 }
 
+/** Load-time subfield coercion across every object row in a structure value. */
 export function normalizeStructureSubfieldValues(
   value: unknown,
   fields: FieldsSubField[],
@@ -523,6 +537,7 @@ export function normalizeStructureSubfieldValues(
   return value.map((item) => (isJsonRecord(item) ? normalizeObjectSubfieldValues(item, fields) : item));
 }
 
+/** Whether object subfield normalization would change the stored value. */
 export function shouldNormalizeObjectSubfieldValues(
   value: unknown,
   fields: FieldsSubField[],
@@ -530,6 +545,7 @@ export function shouldNormalizeObjectSubfieldValues(
   return isJsonRecord(value) && !jsonValuesEqual(value, normalizeObjectSubfieldValues(value, fields));
 }
 
+/** Whether structure subfield normalization would change the stored value. */
 export function shouldNormalizeStructureSubfieldValues(
   value: unknown,
   fields: FieldsSubField[],
@@ -537,6 +553,7 @@ export function shouldNormalizeStructureSubfieldValues(
   return Array.isArray(value) && !jsonValuesEqual(value, normalizeStructureSubfieldValues(value, fields));
 }
 
+/** Parses a complete numeric string; returns `undefined` for empty or invalid input. */
 export function parseNumericInput(value: string, type: "number" | "integer") {
   if (value.trim() === "") {
     return undefined;
@@ -554,12 +571,7 @@ export function parseNumericInput(value: string, type: "number" | "integer") {
   return numericValue;
 }
 
-/**
- * Interpret a stored subfield value as the number it represents for the given
- * type, or `undefined` when it is not a valid value. Coerces numeric strings
- * (common in quoted YAML/JSON) so they display as numbers, and rejects off-type
- * shapes (non-integers for `integer`, non-finite numbers, non-scalars).
- */
+/** Coerces stored subfield values to a finite number matching the subfield type. */
 export function interpretNumericValue(
   value: unknown,
   type: "number" | "integer",
@@ -575,20 +587,13 @@ export function interpretNumericValue(
   return undefined;
 }
 
+/** Commit decision for a numeric subfield keystroke: set, clear, or hold prior value. */
 export type NumericCommit =
   | { type: "set"; value: number }
   | { type: "clear" }
   | { type: "hold" };
 
-/**
- * Decide what a numeric subfield should commit for a raw input string.
- *
- * - `set`: the draft is a complete, valid number — commit it.
- * - `clear`: the draft is empty — commit `undefined`.
- * - `hold`: the draft is an in-progress/invalid string (e.g. `"3."`, `"-"`, or
- *   `"12.3"` for an integer) — keep the previously committed value so partial
- *   typing neither truncates the input nor wipes existing data.
- */
+/** Maps raw input to a commit action without wiping in-progress decimals or minus signs. */
 export function numericChangeCommit(raw: string, type: "number" | "integer"): NumericCommit {
   if (raw.trim() === "") {
     return { type: "clear" };
@@ -620,9 +625,7 @@ function NumericSubField({
   const valueString = committed === undefined ? "" : String(committed);
   const [draft, setDraft] = useState(valueString);
 
-  // Reconcile external value changes into the draft. Only resync when the
-  // committed prop no longer matches what the draft currently represents, so
-  // in-progress strings ("3.", "-", "12.3") survive while the user types.
+  // Resync draft only when the committed prop diverges — not on every keystroke.
   useEffect(() => {
     if (parseNumericInput(draft, type) !== committed) {
       setDraft(valueString);
@@ -787,6 +790,7 @@ function summary(
   });
 }
 
+/** JSON object editor with a fixed subfield layout from `options.fields`. */
 export function ObjectField({
   value,
   onChange,
@@ -812,6 +816,7 @@ export function ObjectField({
   );
 }
 
+/** Repeatable JSON object rows with add/remove, optional reorder, and min/max guards. */
 export function StructureField({
   value,
   onChange,
@@ -913,6 +918,7 @@ export const ObjectFormField = ObjectField;
 /** @deprecated Use StructureField. */
 export const ListField = StructureField;
 
+/** Typed link editor for URL, email, tel, entry, and media targets. */
 export function LinkField({
   value,
   onChange,
@@ -983,6 +989,7 @@ export function LinkField({
   );
 }
 
+/** Single- or multi-select choice widget with vertical, horizontal, and card layouts. */
 export function ChoicesField({
   value,
   onChange,
@@ -991,9 +998,7 @@ export function ChoicesField({
   options,
 }: FieldWidgetProps<ChoicesOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  // Treat `choices` and `options` as interchangeable sources; fall back to the
-  // `options` alias when `choices` is absent OR empty (`??` alone lets an empty
-  // array shadow the alias).
+  // Empty `choices` must not shadow the `options` alias (`??` alone would).
   const choicesList = normalizeChoices(
     options?.choices?.length ? options.choices : options?.options,
   );
@@ -1123,6 +1128,7 @@ export function ChoicesField({
   );
 }
 
+/** Admin widget registry keyed by `fieldsWidgets` identifiers. */
 export const fields = {
   object: ObjectField,
   structure: StructureField,
