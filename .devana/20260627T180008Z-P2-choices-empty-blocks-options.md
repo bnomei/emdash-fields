@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:667 | choices-empty-blocks-options
 
 # Empty choices array blocks options alias fallback
@@ -47,6 +47,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. `ChoicesField` resolved the list with `options?.choices ?? options?.options`, so a non-nullish empty `choices: []` shadowed the `options` alias and forced the misconfiguration message. Changed to `options?.choices?.length ? options.choices : options?.options` (the report's suggested fix), so the alias supplies items whenever `choices` is absent or empty. Behavior is unchanged when `choices` has items or both are absent. Added an SSR regression test asserting the fallback renders the options and not the "misconfigured" message; full suite (33 tests) passes.
 
 DEVANA-KEY: src/admin.tsx:667 | choices-empty-blocks-options
-DEVANA-SUMMARY: open | P2 | medium | `choices: []` prevents the `options` alias from supplying choice items because `??` does not treat empty arrays as absent.
+DEVANA-SUMMARY: fixed | P2 | medium | `choices: []` prevents the `options` alias from supplying choice items because `??` does not treat empty arrays as absent.

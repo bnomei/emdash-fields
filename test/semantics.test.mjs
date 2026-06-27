@@ -56,6 +56,24 @@ test("link inputs render connected labels without Kumo warnings", () => {
   assert.match(html, /id="fields-link-target"/);
 });
 
+test("empty choices array falls back to the options alias", () => {
+  const { html } = renderWithoutWarnings(
+    React.createElement(ChoicesField, {
+      value: null,
+      onChange() {},
+      id: "choices",
+      options: {
+        choices: [],
+        options: ["alpha", "beta"],
+      },
+    }),
+  );
+
+  assert.doesNotMatch(html, /misconfigured/i);
+  assert.match(html, /alpha/);
+  assert.match(html, /beta/);
+});
+
 test("choice collections expose semantic groups and unique labelled controls", () => {
   const { html } = renderWithoutWarnings(
     React.createElement(ChoicesField, {

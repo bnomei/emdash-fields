@@ -839,7 +839,12 @@ export function ChoicesField({
   options,
 }: FieldWidgetProps<ChoicesOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  const choicesList = normalizeChoices(options?.choices ?? options?.options);
+  // Treat `choices` and `options` as interchangeable sources; fall back to the
+  // `options` alias when `choices` is absent OR empty (`??` alone lets an empty
+  // array shadow the alias).
+  const choicesList = normalizeChoices(
+    options?.choices?.length ? options.choices : options?.options,
+  );
   const legend = label ?? fieldMessage("choices", i18n);
   const multiple = coerceBoolean(options?.multiple);
   const horizontal = options?.orientation === "horizontal";
