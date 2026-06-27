@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:688 | duplicate-choice-value-collapse
 
 # Duplicate choice values collapse selection and React keys
@@ -55,6 +55,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed via dedup (the report's second suggested remedy). Independent per-row selection is impossible to fix the other way: the persisted value is an array of value strings, so two choices sharing a value are one logical token and `["plan-a"]` cannot encode "Plan A selected but not Plan B". Keying rows by index would still collapse selection at the storage layer. `normalizeChoices` now drops later duplicate values (first occurrence wins), eliminating the React key collision and the mirrored checked state, and matching how `normalizeChoiceSelection` already dedupes the selection set. The missing-value repair from the choice-missing-value-crash fix is preserved. Added a regression test; typecheck clean; full suite (31 tests) passes. See [[choice-missing-value-crash]].
 
 DEVANA-KEY: src/admin.tsx:688 | duplicate-choice-value-collapse
-DEVANA-SUMMARY: open | P2 | medium | Duplicate choice `value`s share React keys and one selection token, so distinct labels cannot be toggled independently.
+DEVANA-SUMMARY: fixed | P2 | medium | Duplicate choice `value`s share React keys and one selection token, so distinct labels cannot be toggled independently.

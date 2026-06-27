@@ -133,6 +133,24 @@ test("choices guarantee a string value for object choices", () => {
   }
 });
 
+test("choices drop later duplicate values so each card is independent", () => {
+  assert.deepEqual(
+    normalizeChoices([
+      { value: "plan-a", label: "Plan A" },
+      { value: "plan-a", label: "Plan B" },
+      { value: "plan-b", label: "Plan B" },
+    ]),
+    [
+      { value: "plan-a", label: "Plan A" },
+      { value: "plan-b", label: "Plan B" },
+    ],
+  );
+  assert.deepEqual(normalizeChoices(["x", "x", "y"]), [
+    { value: "x", label: "x" },
+    { value: "y", label: "y" },
+  ]);
+});
+
 test("multiple choice selections preserve order while removing duplicates", () => {
   assert.deepEqual(normalizeChoiceSelection(["beta", "alpha", "beta", 42], true), [
     "beta",

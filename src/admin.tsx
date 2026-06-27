@@ -263,21 +263,30 @@ export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): 
 }
 
 export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoice[] {
-  return (value ?? []).flatMap((choice) => {
+  const seen = new Set<string>();
+  const result: FieldsChoice[] = [];
+  for (const choice of value ?? []) {
+    let normalized: FieldsChoice | undefined;
     if (typeof choice === "string") {
-      return [{ value: choice, label: choice }];
+      normalized = { value: choice, label: choice };
+    } else if (typeof choice.value === "string") {
+      normalized = choice;
+    } else if (typeof choice.label === "string") {
+      // Object choices authored in serialized JSON/YAML can omit the required
+      // `value`. Synthesize one from a string label when possible, otherwise the
+      // malformed choice is skipped so a single bad option cannot crash the widget.
+      normalized = { ...choice, value: choice.label };
     }
-    if (typeof choice.value === "string") {
-      return [choice];
+    // Selection is keyed by `value`, so two choices sharing a value are a single
+    // logical token that cannot be selected independently. Drop later duplicates
+    // to avoid React key collisions and mirrored checked state.
+    if (!normalized || seen.has(normalized.value)) {
+      continue;
     }
-    // Object choices authored in serialized JSON/YAML can omit the required
-    // `value`. Synthesize one from a string label when possible, otherwise drop
-    // the malformed choice so a single bad option cannot crash the widget.
-    if (typeof choice.label === "string") {
-      return [{ ...choice, value: choice.label }];
-    }
-    return [];
-  });
+    seen.add(normalized.value);
+    result.push(normalized);
+  }
+  return result;
 }
 
 export function normalizeChoiceSelection(value: unknown, multiple: boolean): string[] {
