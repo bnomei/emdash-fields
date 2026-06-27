@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: invalid | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:520 | structure-reorder-wrong-row
 
 # Structure reorder can edit the wrong row after move or delete
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: invalid. The data-corruption mechanism (a "stale render snapshot" handler writing to the wrong item) does not occur here. `StructureField` keeps no per-row local state: `items` is recomputed from props on every render, the kumo `Input`/`Textarea` are fully controlled via `value`, and `renderSubField`/`renderObjectFields` are pure. After `moveStructureItem` re-renders the component, `.map` re-runs and every input receives a fresh `onChange` closure bound to the current `items` and `index`, so the input at a given slot always displays AND edits the item currently at that slot — consistent, not corrupting. Counterexample step 5 ("writes into A instead of B") is therefore false: there is no persisted stale closure across renders. Separately, reorder is triggered by clicking the Up/Down `Button`, which moves focus to the button, so the premise "focus remains in the input" cannot arise through the provided UI. Index keys are non-ideal style but harmless with controlled inputs; a stable-id refactor would add a parallel-state-sync surface with no correctness benefit here.
 
 DEVANA-KEY: src/admin.tsx:520 | structure-reorder-wrong-row
-DEVANA-SUMMARY: open | P2 | medium | Index-keyed structure rows can apply edits to the wrong item after reorder or delete while focus stays on the same slot.
+DEVANA-SUMMARY: invalid | P2 | medium | Index-keyed structure rows can apply edits to the wrong item after reorder or delete while focus stays on the same slot.
