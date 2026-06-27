@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P1 | high | security=no
+DEVANA-STATE: wontfix | P1 | high | security=no
 DEVANA-KEY: src/admin.tsx:179 | object-invalid-root-lost
 
 # Object field replaces invalid root value on first edit
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: wontfix. Dataflow confirmed accurate, but the only data that can be "lost" is a non-object root (array/scalar/null), which an object editor cannot represent — there is no key mapping from an array/scalar into named subfields. Verified that *valid* object roots already preserve every key, including ones absent from the fields config (`updateObjectValue({title,extra}, "title", "New")` keeps `extra`). The loss happens only on an explicit edit, never on load, so untouched malformed values remain intact in storage. The suggested mount-time canonicalization would drop the same unrepresentable data earlier while marking every entry with malformed JSON dirty on open — strictly worse UX. No change is data-preserving, so behavior is left intentional.
 
 DEVANA-KEY: src/admin.tsx:179 | object-invalid-root-lost
-DEVANA-SUMMARY: open | P1 | high | First subfield edit replaces an invalid object root with a partial object and drops the original value.
+DEVANA-SUMMARY: wontfix | P1 | high | First subfield edit replaces an invalid object root with a partial object and drops the original value.
