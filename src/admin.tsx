@@ -472,6 +472,65 @@ export function selectSubfieldValue(value: unknown): string {
   return "";
 }
 
+export function normalizeSelectSubfieldValue(
+  value: unknown,
+  choices: FieldsChoice[] | string[] | undefined,
+): string {
+  const nextValue = selectSubfieldValue(value);
+  if (!nextValue) return "";
+  return normalizeChoices(choices).some((choice) => choice.value === nextValue) ? nextValue : "";
+}
+
+export function normalizeSubfieldStoredValue(field: FieldsSubField, value: unknown): unknown {
+  const type = field.type ?? "text";
+  if (type === "select") {
+    return normalizeSelectSubfieldValue(value, field.options);
+  }
+  return value;
+}
+
+export function normalizeObjectSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): JsonRecord {
+  const data = normalizeObjectValue(value);
+  let nextData = data;
+
+  for (const field of fields) {
+    const nextValue = normalizeSubfieldStoredValue(field, data[field.key]);
+    if (!jsonValuesEqual(data[field.key], nextValue)) {
+      if (nextData === data) {
+        nextData = { ...data };
+      }
+      nextData[field.key] = nextValue;
+    }
+  }
+
+  return nextData;
+}
+
+export function normalizeStructureSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => (isJsonRecord(item) ? normalizeObjectSubfieldValues(item, fields) : item));
+}
+
+export function shouldNormalizeObjectSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): boolean {
+  return isJsonRecord(value) && !jsonValuesEqual(value, normalizeObjectSubfieldValues(value, fields));
+}
+
+export function shouldNormalizeStructureSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): boolean {
+  return Array.isArray(value) && !jsonValuesEqual(value, normalizeStructureSubfieldValues(value, fields));
+}
+
 export function parseNumericInput(value: string, type: "number" | "integer") {
   if (value.trim() === "") {
     return undefined;
@@ -664,7 +723,7 @@ function renderSubField(
               label: choiceLabel(choice, i18n),
             })),
           ]}
-          value={selectSubfieldValue(value)}
+          value={normalizeSelectSubfieldValue(value, field.options)}
           onValueChange={(nextValue) => onChange(String(nextValue))}
         />
       ) : type === "number" || type === "integer" ? (
@@ -729,8 +788,9 @@ export function ObjectField({
   options,
 }: FieldWidgetProps<ObjectOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  const data = normalizeObjectValue(value);
   const fields = options?.fields ?? [];
+  const data = normalizeObjectSubfieldValues(value, fields);
+  useNormalizedOnChange(value, data, onChange, shouldNormalizeObjectSubfieldValues(value, fields));
 
   if (!fields.length) {
     return <p>{fieldMessage("objectRequiresFields", i18n)}</p>;
@@ -753,8 +813,15 @@ export function StructureField({
   options,
 }: FieldWidgetProps<StructureOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  const items = normalizeStructureValue(value);
   const fields = options?.fields ?? [];
+  const normalizedValue = normalizeStructureSubfieldValues(value, fields);
+  const items = normalizeStructureValue(normalizedValue);
+  useNormalizedOnChange(
+    value,
+    normalizedValue,
+    onChange,
+    shouldNormalizeStructureSubfieldValues(value, fields),
+  );
   const itemLabel = localizedString(options?.itemLabel, i18n, fieldMessage("item", i18n));
   const sortable = options?.sortable !== false;
   const bounds = effectiveStructureBounds(options?.min, options?.max);

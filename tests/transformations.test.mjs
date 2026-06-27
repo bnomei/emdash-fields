@@ -11,10 +11,15 @@ import {
   normalizeSingleChoice,
   normalizeLinkValue,
   normalizeObjectValue,
+  normalizeObjectSubfieldValues,
+  normalizeSelectSubfieldValue,
   normalizeStructureValue,
+  normalizeStructureSubfieldValues,
   removeStructureItem,
   selectSubfieldValue,
   shouldNormalizeLinkValue,
+  shouldNormalizeObjectSubfieldValues,
+  shouldNormalizeStructureSubfieldValues,
   updateChoiceSelection,
   updateLinkValue,
   updateObjectValue,
@@ -224,6 +229,31 @@ test("select subfield value stringifies numbers and blanks non-scalars", () => {
   assert.equal(selectSubfieldValue(null), "");
   assert.equal(selectSubfieldValue(["Calm"]), "");
   assert.equal(selectSubfieldValue({ value: "Calm" }), "");
+});
+
+test("select subfield values normalize against configured options", () => {
+  assert.equal(normalizeSelectSubfieldValue("Calm", ["Calm", "Bold"]), "Calm");
+  assert.equal(normalizeSelectSubfieldValue(1, ["1", "2"]), "1");
+  assert.equal(normalizeSelectSubfieldValue(1, ["Calm", "Bold"]), "");
+  assert.equal(normalizeSelectSubfieldValue(["Calm"], ["Calm"]), "");
+});
+
+test("object and structure subfield values normalize select fields on load", () => {
+  const fields = [{ key: "tone", label: "Tone", type: "select", options: ["Calm", "Bold"] }];
+
+  assert.deepEqual(normalizeObjectSubfieldValues({ tone: 1, title: "Intro" }, fields), {
+    tone: "",
+    title: "Intro",
+  });
+  assert.equal(shouldNormalizeObjectSubfieldValues({ tone: 1 }, fields), true);
+  assert.equal(shouldNormalizeObjectSubfieldValues(["bad"], fields), false);
+
+  assert.deepEqual(normalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), [
+    { tone: "" },
+    "bad",
+  ]);
+  assert.equal(shouldNormalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), true);
+  assert.equal(shouldNormalizeStructureSubfieldValues(["bad"], fields), false);
 });
 
 test("boolean subfield checked state ignores truthy string false", () => {
