@@ -88,6 +88,21 @@ test("link values normalize invalid inputs and merge partial updates", () => {
   });
 });
 
+test("link values drop type and target outside the documented unions", () => {
+  assert.deepEqual(normalizeLinkValue({ type: "javascript", value: "https://x" }), {
+    value: "https://x",
+  });
+  assert.deepEqual(normalizeLinkValue({ type: "url", value: "https://x", target: "_parent" }), {
+    type: "url",
+    value: "https://x",
+  });
+  assert.deepEqual(normalizeLinkValue({ type: "email", value: "a@b.c", target: "_blank" }), {
+    type: "email",
+    value: "a@b.c",
+    target: "_blank",
+  });
+});
+
 test("link field preserves a scalar URL root through the first edit", () => {
   const data = normalizeLinkValue("https://example.com");
   assert.deepEqual(updateLinkValue(data, { text: "Home" }), {

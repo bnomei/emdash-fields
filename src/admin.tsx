@@ -232,6 +232,9 @@ export function moveStructureItem(
   return nextItems;
 }
 
+const LINK_TYPES = ["url", "email", "tel", "entry", "media"] as const;
+const LINK_TARGETS = ["_blank", "_self"] as const;
+
 export function normalizeLinkValue(value: unknown): LinkValue {
   // A bare string root maps naturally to the link's URL value, so preserve and
   // surface it instead of discarding it on the first edit. Other non-object
@@ -239,7 +242,20 @@ export function normalizeLinkValue(value: unknown): LinkValue {
   if (typeof value === "string") {
     return value ? { value } : {};
   }
-  return normalizeObjectValue(value) as LinkValue;
+  // Drop `type`/`target` values outside their documented unions so stored JSON
+  // cannot diverge from what the controls display (the select/checkbox fall back
+  // to their defaults) and the alien value clears on the next save.
+  const next = { ...normalizeObjectValue(value) } as Record<string, unknown>;
+  if (typeof next.type !== "string" || !(LINK_TYPES as readonly string[]).includes(next.type)) {
+    delete next.type;
+  }
+  if (
+    typeof next.target !== "string" ||
+    !(LINK_TARGETS as readonly string[]).includes(next.target)
+  ) {
+    delete next.target;
+  }
+  return next as LinkValue;
 }
 
 export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): LinkValue {

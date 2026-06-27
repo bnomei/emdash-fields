@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:234 | link-alien-fields-persist
 
 # Link field preserves invalid type and target values
@@ -45,6 +45,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. `normalizeLinkValue` now validates `type` against `["url","email","tel","entry","media"]` and `target` against `["_blank","_self"]`, deleting any value outside the union. This stops stored JSON from diverging from the controls: an alien `type` (e.g. `"javascript"`) is dropped so the select shows its `"url"` default, and an alien `target` (e.g. `"_parent"`) is dropped so the unchecked checkbox matches storage; both clear on the next save. `value`/`text` and any unknown extra keys are preserved (spread, then targeted deletes). Since `LinkField` reads through `normalizeLinkValue` and `updateLinkValue` merges onto that normalized base, the write path is clean too. Added a regression test; typecheck clean; full suite (30 tests) passes. See [[link-invalid-root-lost]].
 
 DEVANA-KEY: src/admin.tsx:234 | link-alien-fields-persist
-DEVANA-SUMMARY: open | P2 | medium | Invalid link `type` and `target` strings pass through normalization and survive save without user correction.
+DEVANA-SUMMARY: fixed | P2 | medium | Invalid link `type` and `target` strings pass through normalization and survive save without user correction.
