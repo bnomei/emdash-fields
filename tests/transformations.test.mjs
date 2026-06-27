@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   addStructureItem,
+  isBooleanChecked,
   moveStructureItem,
   normalizeChoices,
   normalizeChoiceSelection,
@@ -115,6 +116,19 @@ test("removing and re-adding a multiple choice moves it to the end", () => {
 
   assert.deepEqual(removed, ["alpha"]);
   assert.deepEqual(updateChoiceSelection(removed, "beta", true, true), ["alpha", "beta"]);
+});
+
+test("boolean subfield checked state ignores truthy string false", () => {
+  assert.equal(isBooleanChecked(true), true);
+  assert.equal(isBooleanChecked("true"), true);
+  assert.equal(isBooleanChecked("1"), true);
+  assert.equal(isBooleanChecked(1), true);
+  assert.equal(isBooleanChecked("false"), false);
+  assert.equal(isBooleanChecked("0"), false);
+  assert.equal(isBooleanChecked(""), false);
+  assert.equal(isBooleanChecked(false), false);
+  assert.equal(isBooleanChecked(null), false);
+  assert.equal(isBooleanChecked(undefined), false);
 });
 
 test("single choice selections normalize to the selected string", () => {

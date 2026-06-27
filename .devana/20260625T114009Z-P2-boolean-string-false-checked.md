@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:404 | boolean-string-false-checked
 
 # Boolean subfield treats string "false" as checked
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. The boolean subfield branch now uses a new exported `isBooleanChecked(value)` helper instead of `Boolean(value)`. Strings are interpreted strictly (`"true"`/`"1"` → checked; `"false"`/`"0"`/`""` → unchecked, case/whitespace-insensitive); non-string values keep `Boolean()` semantics. Added a regression test covering string/number/boolean/null inputs. Full suite (24 tests) passes.
 
 DEVANA-KEY: src/admin.tsx:404 | boolean-string-false-checked
-DEVANA-SUMMARY: open | P2 | medium | String "false" in boolean subfields renders as checked because the widget uses Boolean(value).
+DEVANA-SUMMARY: fixed | P2 | medium | String "false" in boolean subfields renders as checked because the widget uses Boolean(value).

@@ -333,6 +333,14 @@ function choiceLabel(choice: FieldsChoice, i18n: FieldsI18nConfig) {
   return localizedString(choice.label, i18n, choice.value);
 }
 
+export function isBooleanChecked(value: unknown): boolean {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1";
+  }
+  return Boolean(value);
+}
+
 export function parseNumericInput(value: string, type: "number" | "integer") {
   if (value.trim() === "") {
     return undefined;
@@ -404,7 +412,7 @@ function renderSubField(
           <input
             id={id}
             type="checkbox"
-            checked={Boolean(value)}
+            checked={isBooleanChecked(value)}
             name={field.key}
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               onChange(event.currentTarget.checked)
