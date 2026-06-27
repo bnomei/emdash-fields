@@ -245,14 +245,23 @@ test("object and structure subfield values normalize select fields on load", () 
     tone: "",
     title: "Intro",
   });
+  assert.deepEqual(normalizeObjectSubfieldValues({ title: "Intro" }, fields), {
+    title: "Intro",
+  });
   assert.equal(shouldNormalizeObjectSubfieldValues({ tone: 1 }, fields), true);
+  assert.equal(shouldNormalizeObjectSubfieldValues({ title: "Intro" }, fields), false);
   assert.equal(shouldNormalizeObjectSubfieldValues(["bad"], fields), false);
 
   assert.deepEqual(normalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), [
     { tone: "" },
     "bad",
   ]);
+  assert.deepEqual(normalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), [
+    { title: "Intro" },
+    "bad",
+  ]);
   assert.equal(shouldNormalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), true);
+  assert.equal(shouldNormalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), false);
   assert.equal(shouldNormalizeStructureSubfieldValues(["bad"], fields), false);
 });
 
@@ -266,13 +275,22 @@ test("object and structure subfield values normalize numeric fields on load", ()
     count: 42,
     priority: undefined,
   });
+  assert.deepEqual(normalizeObjectSubfieldValues({ title: "Intro" }, fields), {
+    title: "Intro",
+  });
   assert.equal(shouldNormalizeObjectSubfieldValues({ count: "42" }, fields), true);
+  assert.equal(shouldNormalizeObjectSubfieldValues({ title: "Intro" }, fields), false);
 
   assert.deepEqual(normalizeStructureSubfieldValues([{ count: "42", priority: 3.14 }, "bad"], fields), [
     { count: 42, priority: undefined },
     "bad",
   ]);
+  assert.deepEqual(normalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), [
+    { title: "Intro" },
+    "bad",
+  ]);
   assert.equal(shouldNormalizeStructureSubfieldValues([{ count: "42" }, "bad"], fields), true);
+  assert.equal(shouldNormalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), false);
 });
 
 test("boolean subfield checked state ignores truthy string false", () => {

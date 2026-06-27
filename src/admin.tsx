@@ -500,6 +500,9 @@ export function normalizeObjectSubfieldValues(
   let nextData = data;
 
   for (const field of fields) {
+    if (!Object.hasOwn(data, field.key)) {
+      continue;
+    }
     const nextValue = normalizeSubfieldStoredValue(field, data[field.key]);
     if (!jsonValuesEqual(data[field.key], nextValue)) {
       if (nextData === data) {
