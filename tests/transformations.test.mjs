@@ -68,7 +68,11 @@ test("structure transformations ignore out-of-range item indexes", () => {
 });
 
 test("link values normalize invalid inputs and merge partial updates", () => {
-  assert.deepEqual(normalizeLinkValue("bad"), {});
+  assert.deepEqual(normalizeLinkValue(42), {});
+  assert.deepEqual(normalizeLinkValue(["bad"]), {});
+  assert.deepEqual(normalizeLinkValue(""), {});
+  // a bare string root is preserved as the link's URL value
+  assert.deepEqual(normalizeLinkValue("https://example.com"), { value: "https://example.com" });
 
   assert.deepEqual(
     updateLinkValue(
@@ -80,6 +84,14 @@ test("link values normalize invalid inputs and merge partial updates", () => {
   assert.deepEqual(updateLinkValue(null, { type: "url", value: "https://example.com" }), {
     type: "url",
     value: "https://example.com",
+  });
+});
+
+test("link field preserves a scalar URL root through the first edit", () => {
+  const data = normalizeLinkValue("https://example.com");
+  assert.deepEqual(updateLinkValue(data, { text: "Home" }), {
+    value: "https://example.com",
+    text: "Home",
   });
 });
 

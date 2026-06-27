@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P1 | high | security=no
+DEVANA-STATE: fixed | P1 | high | security=no
 DEVANA-KEY: src/admin.tsx:596 | link-invalid-root-lost
 
 # Link field first edit drops invalid scalar root
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. Unlike object-invalid-root-lost / structure-row-coercion-lost (wontfix, because an array/scalar root has no field mapping in an object editor), a link field has a natural mapping: a bare string root IS the URL value. `normalizeLinkValue` now coerces a non-empty string root to `{ value }`, so the URL is both surfaced in the value input on load and preserved when other subfields are edited (`updateLinkValue({value}, {text})` → `{value, text}`). Other non-object roots (number/array/etc.) still normalize to `{}`. Updated the existing normalization test (string root is no longer dropped; uses number/array/"" for the empty cases) and added a scalar-root-through-edit regression test. Full suite (27 tests) passes.
 
 DEVANA-KEY: src/admin.tsx:596 | link-invalid-root-lost
-DEVANA-SUMMARY: open | P1 | high | First link subfield edit replaces an invalid scalar root with a partial object and drops the original value.
+DEVANA-SUMMARY: fixed | P1 | high | First link subfield edit replaces an invalid scalar root with a partial object and drops the original value.

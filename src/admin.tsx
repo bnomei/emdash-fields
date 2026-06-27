@@ -232,6 +232,12 @@ export function moveStructureItem(
 }
 
 export function normalizeLinkValue(value: unknown): LinkValue {
+  // A bare string root maps naturally to the link's URL value, so preserve and
+  // surface it instead of discarding it on the first edit. Other non-object
+  // roots have no field mapping and normalize to an empty link.
+  if (typeof value === "string") {
+    return value ? { value } : {};
+  }
   return normalizeObjectValue(value) as LinkValue;
 }
 
