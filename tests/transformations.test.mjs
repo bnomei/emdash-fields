@@ -256,6 +256,25 @@ test("object and structure subfield values normalize select fields on load", () 
   assert.equal(shouldNormalizeStructureSubfieldValues(["bad"], fields), false);
 });
 
+test("object and structure subfield values normalize numeric fields on load", () => {
+  const fields = [
+    { key: "count", label: "Count", type: "number" },
+    { key: "priority", label: "Priority", type: "integer" },
+  ];
+
+  assert.deepEqual(normalizeObjectSubfieldValues({ count: "42", priority: 3.14 }, fields), {
+    count: 42,
+    priority: undefined,
+  });
+  assert.equal(shouldNormalizeObjectSubfieldValues({ count: "42" }, fields), true);
+
+  assert.deepEqual(normalizeStructureSubfieldValues([{ count: "42", priority: 3.14 }, "bad"], fields), [
+    { count: 42, priority: undefined },
+    "bad",
+  ]);
+  assert.equal(shouldNormalizeStructureSubfieldValues([{ count: "42" }, "bad"], fields), true);
+});
+
 test("boolean subfield checked state ignores truthy string false", () => {
   assert.equal(isBooleanChecked(true), true);
   assert.equal(isBooleanChecked("true"), true);

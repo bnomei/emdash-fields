@@ -486,6 +486,9 @@ export function normalizeSubfieldStoredValue(field: FieldsSubField, value: unkno
   if (type === "select") {
     return normalizeSelectSubfieldValue(value, field.options);
   }
+  if (type === "number" || type === "integer") {
+    return interpretNumericValue(value, type);
+  }
   return value;
 }
 
