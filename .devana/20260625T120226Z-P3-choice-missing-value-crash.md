@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P3 | medium | security=no
+DEVANA-STATE: fixed | P3 | medium | security=no
 DEVANA-KEY: src/admin.tsx:242 | choice-missing-value-crash
 
 # Choice object without `value` crashes the whole choices widget
@@ -113,6 +113,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. Confirmed `normalizeChoices` passed object choices through untouched, so `{label:"X"}` reached `choiceInputId(id, undefined, index)` → `undefined.replace(...)` → TypeError crashing the widget in the horizontal/multiple layouts (and a broken non-selectable item in single mode). `normalizeChoices` now enforces the post-normalization invariant "every choice has a string `value`": object choices with a string value pass through; those missing it synthesize a value from a string `label` (mirroring the string branch); otherwise the malformed choice is dropped via `flatMap` so one bad option degrades gracefully instead of crashing. Added regression tests; typecheck clean; full suite (26 tests) passes.
 
 DEVANA-KEY: src/admin.tsx:242 | choice-missing-value-crash
-DEVANA-SUMMARY: open | P3 | medium | A choice object missing `value` survives normalizeChoices and crashes the choices widget at choiceInputId in two of three layouts.
+DEVANA-SUMMARY: fixed | P3 | medium | A choice object missing `value` survives normalizeChoices and crashes the choices widget at choiceInputId in two of three layouts.

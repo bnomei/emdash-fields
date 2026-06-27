@@ -90,6 +90,21 @@ test("choices normalize string and object options", () => {
   ]);
 });
 
+test("choices guarantee a string value for object choices", () => {
+  // string-label fallback when value is missing
+  assert.deepEqual(normalizeChoices([{ label: "Workers AI", icon: "AI" }]), [
+    { value: "Workers AI", label: "Workers AI", icon: "AI" },
+  ]);
+  // malformed choice with no value and non-string label is dropped, valid kept
+  assert.deepEqual(normalizeChoices([{ icon: "AI" }, { value: "ok", label: "Ok" }]), [
+    { value: "ok", label: "Ok" },
+  ]);
+  // every returned choice has a string value
+  for (const choice of normalizeChoices(["a", { label: "B" }, { value: "c" }])) {
+    assert.equal(typeof choice.value, "string");
+  }
+});
+
 test("multiple choice selections preserve order while removing duplicates", () => {
   assert.deepEqual(normalizeChoiceSelection(["beta", "alpha", "beta", 42], true), [
     "beta",

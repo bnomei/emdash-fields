@@ -240,9 +240,21 @@ export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): 
 }
 
 export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoice[] {
-  return (value ?? []).map((choice) =>
-    typeof choice === "string" ? { value: choice, label: choice } : choice,
-  );
+  return (value ?? []).flatMap((choice) => {
+    if (typeof choice === "string") {
+      return [{ value: choice, label: choice }];
+    }
+    if (typeof choice.value === "string") {
+      return [choice];
+    }
+    // Object choices authored in serialized JSON/YAML can omit the required
+    // `value`. Synthesize one from a string label when possible, otherwise drop
+    // the malformed choice so a single bad option cannot crash the widget.
+    if (typeof choice.label === "string") {
+      return [{ ...choice, value: choice.label }];
+    }
+    return [];
+  });
 }
 
 export function normalizeChoiceSelection(value: unknown, multiple: boolean): string[] {
