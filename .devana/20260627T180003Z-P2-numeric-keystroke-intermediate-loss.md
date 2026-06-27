@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:358 | numeric-keystroke-intermediate-loss
 
 # Number and integer subfields reject in-progress numeric input
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. Number/integer subfields now render via a new `NumericSubField` component that holds a local string draft (the report's suggested fix). The input is `type="text"` with `inputMode` set ("numeric"/"decimal") so the browser cannot sanitize an in-progress draft away — a controlled `type=number` literally cannot display "3." or "-". The pure, exported `numericChangeCommit(raw, type)` decides the action: `clear` on empty, `set` on a complete valid number, and `hold` (no onChange) for in-progress invalid drafts ("-" , and "12.3" on an integer field) so existing values are never wiped. The draft preserves the visible string while the committed value tracks the parsed number, so decimals/negatives can be typed digit-by-digit; on blur the draft re-syncs to the committed value to clean up dangling separators. A `useEffect` reconciles external value changes into the draft without clobbering active typing. Tradeoff: native number spinners are gone (text input), but `parseNumericInput` still enforces integer/number validity. Added unit tests for `numericChangeCommit`; the SSR semantics test (number subfield) still renders with zero Kumo warnings; typecheck clean; full suite (29 tests) passes.
 
 DEVANA-KEY: src/admin.tsx:358 | numeric-keystroke-intermediate-loss
-DEVANA-SUMMARY: open | P2 | medium | Per-keystroke numeric parsing blocks decimal and negative entry and can wipe integer values on partial decimals.
+DEVANA-SUMMARY: fixed | P2 | medium | Per-keystroke numeric parsing blocks decimal and negative entry and can wipe integer values on partial decimals.

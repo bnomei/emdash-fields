@@ -8,6 +8,7 @@ import {
   type FieldsI18nConfig,
   type LocalizedString,
 } from "./i18n";
+import { useEffect, useState } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import type {
   ChoicesOptions,
@@ -391,6 +392,87 @@ export function parseNumericInput(value: string, type: "number" | "integer") {
   return numericValue;
 }
 
+export type NumericCommit =
+  | { type: "set"; value: number }
+  | { type: "clear" }
+  | { type: "hold" };
+
+/**
+ * Decide what a numeric subfield should commit for a raw input string.
+ *
+ * - `set`: the draft is a complete, valid number — commit it.
+ * - `clear`: the draft is empty — commit `undefined`.
+ * - `hold`: the draft is an in-progress/invalid string (e.g. `"3."`, `"-"`, or
+ *   `"12.3"` for an integer) — keep the previously committed value so partial
+ *   typing neither truncates the input nor wipes existing data.
+ */
+export function numericChangeCommit(raw: string, type: "number" | "integer"): NumericCommit {
+  if (raw.trim() === "") {
+    return { type: "clear" };
+  }
+  const parsed = parseNumericInput(raw, type);
+  return parsed === undefined ? { type: "hold" } : { type: "set", value: parsed };
+}
+
+function NumericSubField({
+  id,
+  name,
+  required,
+  placeholder,
+  labelledBy,
+  type,
+  value,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  required?: boolean;
+  placeholder?: string;
+  labelledBy: string;
+  type: "number" | "integer";
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const committed = typeof value === "number" ? value : undefined;
+  const valueString = committed === undefined ? "" : String(committed);
+  const [draft, setDraft] = useState(valueString);
+
+  // Reconcile external value changes into the draft. Only resync when the
+  // committed prop no longer matches what the draft currently represents, so
+  // in-progress strings ("3.", "-", "12.3") survive while the user types.
+  useEffect(() => {
+    if (parseNumericInput(draft, type) !== committed) {
+      setDraft(valueString);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [committed]);
+
+  return (
+    <Input
+      id={id}
+      name={name}
+      required={required}
+      placeholder={placeholder}
+      aria-labelledby={labelledBy}
+      className="w-full"
+      type="text"
+      inputMode={type === "integer" ? "numeric" : "decimal"}
+      value={draft}
+      onChange={(event: ChangeEvent<HTMLInputElement>) => {
+        const raw = event.currentTarget.value;
+        setDraft(raw);
+        const commit = numericChangeCommit(raw, type);
+        if (commit.type === "set") {
+          onChange(commit.value);
+        } else if (commit.type === "clear") {
+          onChange(undefined);
+        }
+      }}
+      onBlur={() => setDraft(committed === undefined ? "" : String(committed))}
+    />
+  );
+}
+
 function readInputValue(
   event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   type: FieldsSubField["type"],
@@ -467,14 +549,22 @@ function renderSubField(
           value={typeof value === "string" ? value : ""}
           onValueChange={(nextValue) => onChange(String(nextValue))}
         />
+      ) : type === "number" || type === "integer" ? (
+        <NumericSubField
+          id={id}
+          name={field.key}
+          required={field.required}
+          placeholder={placeholder}
+          labelledBy={labelId}
+          type={type}
+          value={value}
+          onChange={onChange}
+        />
       ) : (
         <Input
           {...commonProps}
           className="w-full"
-          type={
-            type === "number" || type === "integer" ? "number" : type === "url" ? "url" : "text"
-          }
-          step={type === "integer" ? 1 : undefined}
+          type={type === "url" ? "url" : "text"}
         />
       )}
       {suffix ? <small style={helpTextStyle}>{suffix}</small> : null}
