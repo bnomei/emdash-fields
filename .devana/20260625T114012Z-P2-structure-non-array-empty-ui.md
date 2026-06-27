@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: wontfix | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:187 | structure-non-array-empty-ui
 
 # Structure field hides non-array persisted values
@@ -49,6 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-25: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: wontfix. Same class as object-invalid-root-lost and structure-row-coercion-lost. The dataflow is accurate, but the persisted value is left intact on load (no mount-time write), so nothing is lost unless the editor performs an explicit action. The two suggested remedies are both undesirable here: (1) mount-time migration via `onChange` marks every entry with malformed JSON dirty on open and would still need a fragile heuristic to tell an "index map" (`{"0":{...}}`) apart from a normal object, risking mis-migration of legitimate values; (2) a raw-value recovery warning is a new UI/i18n feature, not a correctness fix, and outside the scope of this widget's normalize-for-display contract. Left intentional, consistent with the related root-coercion findings.
 
 DEVANA-KEY: src/admin.tsx:187 | structure-non-array-empty-ui
-DEVANA-SUMMARY: open | P2 | medium | Non-array structure values render as an empty list while the original persisted value remains hidden in parent state.
+DEVANA-SUMMARY: wontfix | P2 | medium | Non-array structure values render as an empty list while the original persisted value remains hidden in parent state.
