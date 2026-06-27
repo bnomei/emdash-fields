@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: wontfix | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:526 | structure-stale-closure-clobber
 
 # Structure handlers can clobber pending edits from stale render snapshot
@@ -49,7 +49,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 
 ## Status Notes
 
-- 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: wontfix. The mechanism is real but only under a non-standard parent. `onChange` here is value-based (`(value) => void`, no functional updater), and EmDash drives field widgets as synchronous controlled inputs, so React re-renders between discrete user events and the handler closures always recompose from current state. The clobber requires a parent that defers/batches the `value` prop across two distinct user actions — an integration this widget cannot reliably detect. A correct fix would have to route ALL composition through a mutable value ref updated on every emit: not just the add/remove/move button handlers but every per-row subfield edit flowing through `renderObjectFields` (whose `onChange` merges onto the render-captured row object). A buttons-only ref would fix the report's exact counterexample (edit row 0, then remove row 1) but still drop sequential same-row subfield edits under a deferring parent, giving false confidence. The full refactor carries regression risk disproportionate to a theoretical, parent-dependent edge, so behavior is left as-is. Recommended pattern if revisited: hold `const itemsRef = useRef(items)` synced to the prop each render, update it inside a single `updateItems`, and compose every mutation (including row edits, basing each row merge on `itemsRef.current[index]`) from the ref. Related but distinct: [[structure-reorder-wrong-row]] (invalid; index-key/focus, not stale composition).
 
 DEVANA-KEY: src/admin.tsx:526 | structure-stale-closure-clobber
-DEVANA-SUMMARY: open | P2 | medium | Structure row handlers compose `onChange` from a render snapshot and can drop a pending edit if a second action runs before props refresh.
+DEVANA-SUMMARY: wontfix | P2 | medium | Structure row handlers compose `onChange` from a render snapshot and can drop a pending edit if a second action runs before props refresh.
