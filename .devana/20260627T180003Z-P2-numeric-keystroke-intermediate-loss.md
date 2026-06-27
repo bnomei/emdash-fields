@@ -1,0 +1,54 @@
+DEVANA-FINDING: v1
+DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-KEY: src/admin.tsx:358 | numeric-keystroke-intermediate-loss
+
+# Number and integer subfields reject in-progress numeric input
+
+## Finding
+
+Object and structure subfields of type `number` or `integer` parse the full input string on every `change` event via `parseNumericInput` and immediately write the parsed result back as the controlled `value`. Valid intermediate typing states are converted or rejected, blocking decimal entry digit-by-digit and wiping integer fields on partial decimals. A lone minus sign for negative integers is also rejected.
+
+## Violated Invariant Or Contract
+
+README documents `number` and `integer` subfields as storing a `Number`, or `undefined` when empty. Editors must allow users to reach valid negative and decimal numbers through normal keyboard entry, not only paste.
+
+## Oracle
+
+`tests/numeric-input.test.mjs` validates `parseNumericInput` on finished strings (including `"-9007199254740991"`) but not per-keystroke widget flow. `readInputValue` always calls `parseNumericInput` for `type="number"` inputs (350–361). Controlled `value` at line 383 re-renders from parent state after each parse.
+
+## Counterexample
+
+**Decimal on `number` subfield:** User types `3` then `.` to enter `3.14`. `parseNumericInput("3.", "number")` returns `3`; controlled input shows `3`; the decimal separator cannot be entered.
+
+**Integer wipe:** Stored `count: 12`, user edits toward `13` but transiently produces `"12.3"`. `parseNumericInput("12.3", "integer")` returns `undefined`; `onChange(undefined)` clears the field.
+
+**Negative integer:** Empty integer field, user types `-` first. `parseNumericInput("-", "integer")` → `Number("-")` is `NaN` → `undefined`; minus is dropped before trailing digits.
+
+## Why It Might Matter
+
+Editors cannot reliably enter decimals or negative integers by typing. Existing integer values can be erased by a single mistyped decimal keystroke, causing silent data loss before save.
+
+## Proof
+
+Dataflow trace: keystroke → `readInputValue` → `parseNumericInput` → `onChange(parsed)` → controlled `value` re-render removes in-progress string state.
+
+Locations: `parseNumericInput` (333–347), `readInputValue` (358–359), `renderSubField` `commonProps.value` (383–385).
+
+## Counterevidence Checked
+
+Pasting a complete value like `3.14` or `-5` in one event succeeds. `tests/numeric-input.test.mjs` covers finished strings only. Some browsers may not surface invalid partials to `onChange`, but the widget layer always parses on change with no draft-state buffer.
+
+## Suggested Next Step
+
+Keep a local string draft for numeric inputs and commit parsed numbers on blur or when `parseNumericInput` matches the full input without truncation.
+
+## Agent Handoff
+
+After working this report, preserve the original finding body. Update line 2 `DEVANA-STATE: ...` and the final `DEVANA-SUMMARY:` status/priority/confidence prefix. Use one of: `open`, `fixed`, `invalid`, `stale`, `duplicate`, `wontfix`. Keep `DEVANA-KEY:` stable unless the same finding moved. Add dated notes below with evidence checked.
+
+## Status Notes
+
+- 2026-06-27: open by Devana. Initial report written from static source inspection.
+
+DEVANA-KEY: src/admin.tsx:358 | numeric-keystroke-intermediate-loss
+DEVANA-SUMMARY: open | P2 | medium | Per-keystroke numeric parsing blocks decimal and negative entry and can wipe integer values on partial decimals.

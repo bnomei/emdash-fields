@@ -105,6 +105,11 @@ test("multiple choice selections preserve order while removing duplicates", () =
   assert.deepEqual(updateChoiceSelection(["beta", "alpha"], "beta", true, true), ["beta", "alpha"]);
 });
 
+test("multiple choice mode preserves a scalar stored value on the first toggle", () => {
+  assert.deepEqual(normalizeChoiceSelection("alpha", true), ["alpha"]);
+  assert.deepEqual(updateChoiceSelection("alpha", "beta", true, true), ["alpha", "beta"]);
+});
+
 test("removing and re-adding a multiple choice moves it to the end", () => {
   const removed = updateChoiceSelection(["beta", "alpha"], "beta", false, true);
 

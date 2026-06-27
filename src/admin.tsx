@@ -247,6 +247,9 @@ export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoic
 
 export function normalizeChoiceSelection(value: unknown, multiple: boolean): string[] {
   if (multiple) {
+    if (typeof value === "string") {
+      return [value];
+    }
     return Array.isArray(value)
       ? [...new Set(value.filter((item): item is string => typeof item === "string"))]
       : [];
