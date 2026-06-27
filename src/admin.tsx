@@ -362,12 +362,16 @@ function choiceLabel(choice: FieldsChoice, i18n: FieldsI18nConfig) {
   return localizedString(choice.label, i18n, choice.value);
 }
 
-export function isBooleanChecked(value: unknown): boolean {
+export function coerceBoolean(value: unknown): boolean {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
     return normalized === "true" || normalized === "1";
   }
   return Boolean(value);
+}
+
+export function isBooleanChecked(value: unknown): boolean {
+  return coerceBoolean(value);
 }
 
 export function parseNumericInput(value: string, type: "number" | "integer") {
@@ -706,7 +710,7 @@ export function ChoicesField({
   const i18n = useFieldI18n(options?.i18n);
   const choicesList = normalizeChoices(options?.choices ?? options?.options);
   const legend = label ?? fieldMessage("choices", i18n);
-  const multiple = Boolean(options?.multiple);
+  const multiple = coerceBoolean(options?.multiple);
   const horizontal = options?.orientation === "horizontal";
   const selected = new Set(normalizeChoiceSelection(value, multiple));
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   addStructureItem,
+  coerceBoolean,
   isBooleanChecked,
   moveStructureItem,
   normalizeChoices,
@@ -144,6 +145,16 @@ test("removing and re-adding a multiple choice moves it to the end", () => {
 
   assert.deepEqual(removed, ["alpha"]);
   assert.deepEqual(updateChoiceSelection(removed, "beta", true, true), ["alpha", "beta"]);
+});
+
+test("coerceBoolean parses quoted booleans for option flags", () => {
+  assert.equal(coerceBoolean("false"), false);
+  assert.equal(coerceBoolean("true"), true);
+  assert.equal(coerceBoolean("0"), false);
+  assert.equal(coerceBoolean("1"), true);
+  assert.equal(coerceBoolean(true), true);
+  assert.equal(coerceBoolean(false), false);
+  assert.equal(coerceBoolean(undefined), false);
 });
 
 test("boolean subfield checked state ignores truthy string false", () => {

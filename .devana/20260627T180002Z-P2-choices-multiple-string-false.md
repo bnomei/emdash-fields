@@ -1,5 +1,5 @@
 DEVANA-FINDING: v1
-DEVANA-STATE: open | P2 | medium | security=no
+DEVANA-STATE: fixed | P2 | medium | security=no
 DEVANA-KEY: src/admin.tsx:669 | choices-multiple-string-false
 
 # Choices widget treats string "false" as multiple mode
@@ -50,6 +50,7 @@ After working this report, preserve the original finding body. Update line 2 `DE
 ## Status Notes
 
 - 2026-06-27: open by Devana. Initial report written from static source inspection.
+- 2026-06-27: fixed. `ChoicesField` now derives `multiple` via a shared `coerceBoolean(options?.multiple)` instead of `Boolean(...)`, so quoted booleans from serialized config are parsed correctly: `"false"`/`"0"`/`""` → single mode, `"true"`/`"1"`/`true` → multi mode. Note the report's suggested strict `=== true` was not used because it would also break the (equally common) quoted `"true"` case by forcing single mode. The coercion logic is shared with the boolean-subfield checkbox fix: `coerceBoolean` is the implementation and `isBooleanChecked` delegates to it. Added a regression test; typecheck clean; full suite (28 tests) passes. See [[boolean-string-false-checked]].
 
 DEVANA-KEY: src/admin.tsx:669 | choices-multiple-string-false
-DEVANA-SUMMARY: open | P2 | medium | String `"false"` for `options.multiple` enables multi-select mode and array payloads because `Boolean("false")` is true.
+DEVANA-SUMMARY: fixed | P2 | medium | String `"false"` for `options.multiple` enables multi-select mode and array payloads because `Boolean("false")` is true.
