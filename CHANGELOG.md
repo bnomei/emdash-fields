@@ -4,6 +4,18 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.2.1 - 2026-06-29
+
+- Preserved unknown select subfield values on load so opening object or structure
+  editors no longer clears saved selections that are not in the current option
+  list.
+- Improved legacy/off-type value handling for structured widgets, including
+  scalar URL link values, numeric string subfields, string boolean flags, and
+  single- or multi-choice values stored in older shapes.
+- Documented structure `min`/`max` row-count behavior and fixed contradictory
+  bounds so editor controls stay reachable without trimming or padding stored
+  data on open.
+
 ## 0.2.0 - 2026-06-18
 
 - Added EmDash-shaped `i18n` options with `locale`, `defaultLocale`,
