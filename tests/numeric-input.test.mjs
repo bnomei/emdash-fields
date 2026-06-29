@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  interpretNumericValue,
-  numericChangeCommit,
-  parseNumericInput,
-} from "../dist/admin.mjs";
+import { interpretNumericValue, numericChangeCommit, parseNumericInput } from "../dist/admin.mjs";
 
 test("numeric input emits undefined for empty values", () => {
   assert.equal(parseNumericInput("", "number"), undefined);
