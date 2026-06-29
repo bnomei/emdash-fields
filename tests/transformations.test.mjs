@@ -122,10 +122,7 @@ test("link values drop type and target outside the documented unions", () => {
 });
 
 test("link values report when load-time normalization should be emitted", () => {
-  assert.equal(
-    shouldNormalizeLinkValue({ type: "javascript", value: "https://x" }),
-    true,
-  );
+  assert.equal(shouldNormalizeLinkValue({ type: "javascript", value: "https://x" }), true);
   assert.equal(shouldNormalizeLinkValue({ type: "url", value: "https://x" }), false);
   assert.equal(shouldNormalizeLinkValue("https://x"), true);
   assert.equal(shouldNormalizeLinkValue(""), false);
@@ -230,33 +227,43 @@ test("select subfield value stringifies numbers and blanks non-scalars", () => {
 test("select subfield values normalize against configured options", () => {
   assert.equal(normalizeSelectSubfieldValue("Calm", ["Calm", "Bold"]), "Calm");
   assert.equal(normalizeSelectSubfieldValue(1, ["1", "2"]), "1");
+  assert.equal(normalizeSelectSubfieldValue("Legacy", ["Calm", "Bold"]), "");
   assert.equal(normalizeSelectSubfieldValue(1, ["Calm", "Bold"]), "");
   assert.equal(normalizeSelectSubfieldValue(["Calm"], ["Calm"]), "");
 });
 
-test("object and structure subfield values normalize select fields on load", () => {
+test("object and structure subfield values preserve select fields on load", () => {
   const fields = [{ key: "tone", label: "Tone", type: "select", options: ["Calm", "Bold"] }];
 
   assert.deepEqual(normalizeObjectSubfieldValues({ tone: 1, title: "Intro" }, fields), {
-    tone: "",
+    tone: 1,
     title: "Intro",
+  });
+  assert.deepEqual(normalizeObjectSubfieldValues({ tone: "Legacy" }, fields), {
+    tone: "Legacy",
   });
   assert.deepEqual(normalizeObjectSubfieldValues({ title: "Intro" }, fields), {
     title: "Intro",
   });
-  assert.equal(shouldNormalizeObjectSubfieldValues({ tone: 1 }, fields), true);
+  assert.equal(shouldNormalizeObjectSubfieldValues({ tone: 1 }, fields), false);
+  assert.equal(shouldNormalizeObjectSubfieldValues({ tone: "Legacy" }, fields), false);
   assert.equal(shouldNormalizeObjectSubfieldValues({ title: "Intro" }, fields), false);
   assert.equal(shouldNormalizeObjectSubfieldValues(["bad"], fields), false);
 
   assert.deepEqual(normalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), [
-    { tone: "" },
+    { tone: 1 },
+    "bad",
+  ]);
+  assert.deepEqual(normalizeStructureSubfieldValues([{ tone: "Legacy" }, "bad"], fields), [
+    { tone: "Legacy" },
     "bad",
   ]);
   assert.deepEqual(normalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), [
     { title: "Intro" },
     "bad",
   ]);
-  assert.equal(shouldNormalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), true);
+  assert.equal(shouldNormalizeStructureSubfieldValues([{ tone: 1 }, "bad"], fields), false);
+  assert.equal(shouldNormalizeStructureSubfieldValues([{ tone: "Legacy" }, "bad"], fields), false);
   assert.equal(shouldNormalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), false);
   assert.equal(shouldNormalizeStructureSubfieldValues(["bad"], fields), false);
 });
@@ -277,10 +284,10 @@ test("object and structure subfield values normalize numeric fields on load", ()
   assert.equal(shouldNormalizeObjectSubfieldValues({ count: "42" }, fields), true);
   assert.equal(shouldNormalizeObjectSubfieldValues({ title: "Intro" }, fields), false);
 
-  assert.deepEqual(normalizeStructureSubfieldValues([{ count: "42", priority: 3.14 }, "bad"], fields), [
-    { count: 42, priority: undefined },
-    "bad",
-  ]);
+  assert.deepEqual(
+    normalizeStructureSubfieldValues([{ count: "42", priority: 3.14 }, "bad"], fields),
+    [{ count: 42, priority: undefined }, "bad"],
+  );
   assert.deepEqual(normalizeStructureSubfieldValues([{ title: "Intro" }, "bad"], fields), [
     { title: "Intro" },
     "bad",

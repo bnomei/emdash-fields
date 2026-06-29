@@ -482,7 +482,7 @@ export function selectSubfieldValue(value: unknown): string {
   return "";
 }
 
-/** Select subfield value kept only when it matches a configured option. */
+/** Display value for a select subfield, kept only when it matches a configured option. */
 export function normalizeSelectSubfieldValue(
   value: unknown,
   choices: FieldsChoice[] | string[] | undefined,
@@ -496,7 +496,7 @@ export function normalizeSelectSubfieldValue(
 export function normalizeSubfieldStoredValue(field: FieldsSubField, value: unknown): unknown {
   const type = field.type ?? "text";
   if (type === "select") {
-    return normalizeSelectSubfieldValue(value, field.options);
+    return value;
   }
   if (type === "number" || type === "integer") {
     return interpretNumericValue(value, type);
@@ -534,7 +534,9 @@ export function normalizeStructureSubfieldValues(
   fields: FieldsSubField[],
 ): unknown[] {
   if (!Array.isArray(value)) return [];
-  return value.map((item) => (isJsonRecord(item) ? normalizeObjectSubfieldValues(item, fields) : item));
+  return value.map((item) =>
+    isJsonRecord(item) ? normalizeObjectSubfieldValues(item, fields) : item,
+  );
 }
 
 /** Whether object subfield normalization would change the stored value. */
@@ -542,7 +544,9 @@ export function shouldNormalizeObjectSubfieldValues(
   value: unknown,
   fields: FieldsSubField[],
 ): boolean {
-  return isJsonRecord(value) && !jsonValuesEqual(value, normalizeObjectSubfieldValues(value, fields));
+  return (
+    isJsonRecord(value) && !jsonValuesEqual(value, normalizeObjectSubfieldValues(value, fields))
+  );
 }
 
 /** Whether structure subfield normalization would change the stored value. */
@@ -550,7 +554,9 @@ export function shouldNormalizeStructureSubfieldValues(
   value: unknown,
   fields: FieldsSubField[],
 ): boolean {
-  return Array.isArray(value) && !jsonValuesEqual(value, normalizeStructureSubfieldValues(value, fields));
+  return (
+    Array.isArray(value) && !jsonValuesEqual(value, normalizeStructureSubfieldValues(value, fields))
+  );
 }
 
 /** Parses a complete numeric string; returns `undefined` for empty or invalid input. */
@@ -588,10 +594,7 @@ export function interpretNumericValue(
 }
 
 /** Commit decision for a numeric subfield keystroke: set, clear, or hold prior value. */
-export type NumericCommit =
-  | { type: "set"; value: number }
-  | { type: "clear" }
-  | { type: "hold" };
+export type NumericCommit = { type: "set"; value: number } | { type: "clear" } | { type: "hold" };
 
 /** Maps raw input to a commit action without wiping in-progress decimals or minus signs. */
 export function numericChangeCommit(raw: string, type: "number" | "integer"): NumericCommit {
@@ -747,11 +750,7 @@ function renderSubField(
           onChange={onChange}
         />
       ) : (
-        <Input
-          {...commonProps}
-          className="w-full"
-          type={type === "url" ? "url" : "text"}
-        />
+        <Input {...commonProps} className="w-full" type={type === "url" ? "url" : "text"} />
       )}
       {suffix ? <small style={helpTextStyle}>{suffix}</small> : null}
     </div>
