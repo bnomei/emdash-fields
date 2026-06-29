@@ -39,6 +39,20 @@ test("text-like subfields render connected labels without Kumo warnings", () => 
   assert.match(html, /aria-labelledby="fields-object-count-label"/);
 });
 
+test("number subfield displays a quoted numeric string value", () => {
+  const { html } = renderWithoutWarnings(
+    React.createElement(ObjectField, {
+      value: { count: "42" },
+      onChange() {},
+      options: {
+        fields: [{ key: "count", label: "Count", type: "number" }],
+      },
+    }),
+  );
+
+  assert.match(html, /value="42"/);
+});
+
 test("link inputs render connected labels without Kumo warnings", () => {
   const { html, warnings } = renderWithoutWarnings(
     React.createElement(LinkField, {
@@ -54,6 +68,24 @@ test("link inputs render connected labels without Kumo warnings", () => {
   assert.match(html, /aria-labelledby="fields-link-text-label"/);
   assert.match(html, /<label for="fields-link-target"/);
   assert.match(html, /id="fields-link-target"/);
+});
+
+test("empty choices array falls back to the options alias", () => {
+  const { html } = renderWithoutWarnings(
+    React.createElement(ChoicesField, {
+      value: null,
+      onChange() {},
+      id: "choices",
+      options: {
+        choices: [],
+        options: ["alpha", "beta"],
+      },
+    }),
+  );
+
+  assert.doesNotMatch(html, /misconfigured/i);
+  assert.match(html, /alpha/);
+  assert.match(html, /beta/);
 });
 
 test("choice collections expose semantic groups and unique labelled controls", () => {

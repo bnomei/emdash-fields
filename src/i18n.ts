@@ -1,3 +1,9 @@
+/**
+ * Localization contracts and default copy for fields admin widgets.
+ *
+ * Widget options may carry `FieldsI18nConfig`; otherwise labels resolve through
+ * locale fallback chains and built-in English defaults.
+ */
 export type LocalizedString = string | Record<string, string | undefined>;
 
 export type FieldsMessageKey =
@@ -77,6 +83,7 @@ export function normalizeLocale(locale: string | null | undefined): string {
   return (locale ?? DEFAULT_LOCALE).trim() || DEFAULT_LOCALE;
 }
 
+/** Ordered locale chain: active locale, configured fallbacks, then default. */
 export function localeFallbacks(i18n: FieldsI18nConfig | string | null | undefined): string[] {
   const config = typeof i18n === "string" ? { locale: i18n } : (i18n ?? {});
   const defaultLocale = normalizeLocale(config.defaultLocale ?? DEFAULT_FIELDS_I18N.defaultLocale);
@@ -100,6 +107,7 @@ export function localeFallbacks(i18n: FieldsI18nConfig | string | null | undefin
   return chain;
 }
 
+/** Resolves a localized string or map using the locale fallback chain. */
 export function localizedString(
   value: LocalizedString | null | undefined,
   i18n: FieldsI18nConfig | string | null | undefined,
@@ -122,6 +130,7 @@ export function localizedString(
   return first ?? fallback;
 }
 
+/** Interpolates `{token}` placeholders in a localized string template. */
 export function formatLocalizedString(
   value: LocalizedString,
   i18n: FieldsI18nConfig | string | null | undefined,
@@ -134,6 +143,7 @@ export function formatLocalizedString(
   });
 }
 
+/** Built-in widget copy for a message key, with per-locale overrides. */
 export function fieldMessage(
   key: FieldsMessageKey,
   i18n: FieldsI18nConfig | string | null | undefined,
@@ -154,6 +164,7 @@ export function fieldMessage(
   return DEFAULT_FIELDS_I18N.messages.en[key] ?? key;
 }
 
+/** Built-in widget copy with `{token}` interpolation. */
 export function formatFieldMessage(
   key: FieldsMessageKey,
   i18n: FieldsI18nConfig | string | null | undefined,

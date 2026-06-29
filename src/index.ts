@@ -1,3 +1,9 @@
+/**
+ * EmDash plugin descriptor and public surface for structured JSON field widgets.
+ *
+ * Register `fieldsPlugin` or `createPlugin` so the admin loads object, structure,
+ * link, and choices editors from `@bnomei/emdash-fields/admin`.
+ */
 import { definePlugin, type PluginDescriptor } from "emdash";
 import { fieldMessage, type FieldsI18nConfig } from "./i18n";
 import { fieldsWidgets } from "./schema";
@@ -42,6 +48,7 @@ export {
   localizedString,
 } from "./i18n";
 
+/** Plugin wiring: package entrypoints and optional widget i18n overrides. */
 export type FieldsDescriptorOptions = {
   entrypoint?: string;
   adminEntry?: string;
@@ -52,6 +59,7 @@ const PLUGIN_ID = "fields";
 const PLUGIN_VERSION = "0.2.0";
 const PACKAGE_NAME = "@bnomei/emdash-fields";
 
+/** Native-format plugin descriptor for EmDash field registration. */
 export function fieldsPlugin(options: FieldsDescriptorOptions = {}): PluginDescriptor {
   const entrypoint = options.entrypoint ?? PACKAGE_NAME;
   const adminEntry = options.adminEntry ?? `${entrypoint}/admin`;
@@ -66,6 +74,7 @@ export function fieldsPlugin(options: FieldsDescriptorOptions = {}): PluginDescr
   };
 }
 
+/** `definePlugin` wrapper that registers the four JSON field widgets for admin. */
 export function createPlugin(options: Pick<FieldsDescriptorOptions, "adminEntry" | "i18n"> = {}) {
   return definePlugin({
     id: PLUGIN_ID,

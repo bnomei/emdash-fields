@@ -1,3 +1,10 @@
+/**
+ * React field widgets and pure normalization for structured JSON values.
+ *
+ * Widgets coerce persisted JSON into editor-safe shapes on mount and emit
+ * normalized values through `onChange`; exported helpers support tests and
+ * custom integrations outside the default widget bundle.
+ */
 import { Button, Input, Radio, Select, Textarea } from "@cloudflare/kumo";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useAdminLocale } from "./admin-locale";
@@ -8,6 +15,7 @@ import {
   type FieldsI18nConfig,
   type LocalizedString,
 } from "./i18n";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import type {
   ChoicesOptions,
@@ -30,6 +38,18 @@ type FieldWidgetProps<TOptions = Record<string, unknown>> = {
 };
 
 type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function jsonValueSignature(value: unknown): string {
+  return JSON.stringify(value) ?? "undefined";
+}
+
+function jsonValuesEqual(left: unknown, right: unknown): boolean {
+  return jsonValueSignature(left) === jsonValueSignature(right);
+}
 
 const wrapperStyle = {
   display: "grid",
@@ -176,22 +196,67 @@ function useFieldI18n(i18n: FieldsI18nConfig | undefined): FieldsI18nConfig {
   return { ...i18n, locale };
 }
 
-export function normalizeObjectValue(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+/** One-shot load-time emit: pushes normalized JSON upstream when storage diverges. */
+function useNormalizedOnChange(
+  value: unknown,
+  normalizedValue: unknown,
+  onChange: (value: unknown) => void,
+  enabled: boolean,
+) {
+  const lastEmittedSignature = useRef<string | null>(null);
+  const rawSignature = jsonValueSignature(value);
+  const normalizedSignature = jsonValueSignature(normalizedValue);
+
+  useEffect(() => {
+    if (!enabled || rawSignature === normalizedSignature) {
+      return;
+    }
+
+    const emissionSignature = `${rawSignature}->${normalizedSignature}`;
+    if (lastEmittedSignature.current === emissionSignature) {
+      return;
+    }
+
+    lastEmittedSignature.current = emissionSignature;
+    onChange(normalizedValue);
+  }, [enabled, normalizedSignature, normalizedValue, onChange, rawSignature]);
 }
 
+/** Coerces unknown roots to a plain object; non-objects become `{}`. */
+export function normalizeObjectValue(value: unknown): JsonRecord {
+  return isJsonRecord(value) ? value : {};
+}
+
+/** Immutable single-key update on a normalized object value. */
 export function updateObjectValue(value: unknown, key: string, nextValue: unknown): JsonRecord {
   return { ...normalizeObjectValue(value), [key]: nextValue };
 }
 
+/** Resolves structure min/max; clamps min to max when the config contradicts itself. */
+export function effectiveStructureBounds(
+  min?: number,
+  max?: number,
+): { min?: number; max?: number } {
+  const safeMin = typeof min === "number" ? min : undefined;
+  const safeMax = typeof max === "number" ? max : undefined;
+  // min > max would disable both add and remove at max — clamp to a reachable floor.
+  if (safeMin !== undefined && safeMax !== undefined && safeMin > safeMax) {
+    return { min: safeMax, max: safeMax };
+  }
+  return { min: safeMin, max: safeMax };
+}
+
+/** Coerces unknown roots to an array of object rows; non-arrays become `[]`. */
 export function normalizeStructureValue(value: unknown): JsonRecord[] {
   return Array.isArray(value) ? value.map((item) => normalizeObjectValue(item)) : [];
 }
 
+/** Appends an empty object row to a structure value. */
 export function addStructureItem(value: unknown): JsonRecord[] {
   return [...normalizeStructureValue(value), {}];
 }
 
+/** Replaces one structure row; out-of-range indexes return the source unchanged. */
 export function updateStructureItem(
   value: unknown,
   index: number,
@@ -207,10 +272,12 @@ export function updateStructureItem(
   return nextItems;
 }
 
+/** Removes one structure row by index. */
 export function removeStructureItem(value: unknown, index: number): JsonRecord[] {
   return normalizeStructureValue(value).filter((_item, itemIndex) => itemIndex !== index);
 }
 
+/** Reorders one structure row; invalid indexes return the source unchanged. */
 export function moveStructureItem(
   value: unknown,
   fromIndex: number,
@@ -231,30 +298,94 @@ export function moveStructureItem(
   return nextItems;
 }
 
+const LINK_TYPES = ["url", "email", "tel", "entry", "media"] as const;
+const LINK_TARGETS = ["_blank", "_self"] as const;
+
+/** Coerces link JSON for editing; scalar URL strings map to `{ value }`. */
 export function normalizeLinkValue(value: unknown): LinkValue {
-  return normalizeObjectValue(value) as LinkValue;
+  if (typeof value === "string") {
+    return value ? { value } : {};
+  }
+  const next = { ...normalizeObjectValue(value) } as Record<string, unknown>;
+  // Strip type/target outside documented unions so controls and storage stay aligned.
+  if (typeof next.type !== "string" || !(LINK_TYPES as readonly string[]).includes(next.type)) {
+    delete next.type;
+  }
+  if (
+    typeof next.target !== "string" ||
+    !(LINK_TARGETS as readonly string[]).includes(next.target)
+  ) {
+    delete next.target;
+  }
+  return next as LinkValue;
 }
 
+/** Whether load-time link normalization would change the stored value. */
+export function shouldNormalizeLinkValue(value: unknown): boolean {
+  if (typeof value !== "string" && !isJsonRecord(value)) {
+    return false;
+  }
+  if (value === "") {
+    return false;
+  }
+  return !jsonValuesEqual(value, normalizeLinkValue(value));
+}
+
+/** Immutable partial merge on a normalized link value. */
 export function updateLinkValue(value: unknown, nextValue: Partial<LinkValue>): LinkValue {
   return { ...normalizeLinkValue(value), ...nextValue };
 }
 
+/** Normalizes choice config to `{ value, label }` objects and drops duplicate values. */
 export function normalizeChoices(value?: FieldsChoice[] | string[]): FieldsChoice[] {
-  return (value ?? []).map((choice) =>
-    typeof choice === "string" ? { value: choice, label: choice } : choice,
-  );
+  const seen = new Set<string>();
+  const result: FieldsChoice[] = [];
+  for (const choice of value ?? []) {
+    let normalized: FieldsChoice | undefined;
+    if (typeof choice === "string") {
+      normalized = { value: choice, label: choice };
+    } else if (typeof choice.value === "string") {
+      normalized = choice;
+    } else if (typeof choice.label === "string") {
+      // Serialized choices may omit `value`; synthesize from label or skip malformed rows.
+      normalized = { ...choice, value: choice.label };
+    }
+    if (!normalized || seen.has(normalized.value)) {
+      continue;
+    }
+    seen.add(normalized.value);
+    result.push(normalized);
+  }
+  return result;
 }
 
+/** Coerces stored choice values to a deduped string selection for the widget mode. */
 export function normalizeChoiceSelection(value: unknown, multiple: boolean): string[] {
   if (multiple) {
+    if (typeof value === "string") {
+      return [value];
+    }
     return Array.isArray(value)
       ? [...new Set(value.filter((item): item is string => typeof item === "string"))]
       : [];
   }
 
-  return typeof value === "string" ? [value] : [];
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    const first = value.find((item): item is string => typeof item === "string");
+    return first === undefined ? [] : [first];
+  }
+  return [];
 }
 
+/** First string choice for single-select mode, or `""` when none apply. */
+export function normalizeSingleChoice(value: unknown): string {
+  return normalizeChoiceSelection(value, false)[0] ?? "";
+}
+
+/** Toggles or replaces the stored choice value for single- or multi-select mode. */
 export function updateChoiceSelection(
   value: unknown,
   choiceValue: string,
@@ -330,6 +461,105 @@ function choiceLabel(choice: FieldsChoice, i18n: FieldsI18nConfig) {
   return localizedString(choice.label, i18n, choice.value);
 }
 
+/** Parses quoted `"true"` / `"false"` flags from serialized widget options. */
+export function coerceBoolean(value: unknown): boolean {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1";
+  }
+  return Boolean(value);
+}
+
+/** Checkbox checked state; treats string `"false"` as unchecked. */
+export function isBooleanChecked(value: unknown): boolean {
+  return coerceBoolean(value);
+}
+
+/** Display string for a select subfield; numbers stringify, non-scalars become `""`. */
+export function selectSubfieldValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
+/** Display value for a select subfield, kept only when it matches a configured option. */
+export function normalizeSelectSubfieldValue(
+  value: unknown,
+  choices: FieldsChoice[] | string[] | undefined,
+): string {
+  const nextValue = selectSubfieldValue(value);
+  if (!nextValue) return "";
+  return normalizeChoices(choices).some((choice) => choice.value === nextValue) ? nextValue : "";
+}
+
+/** Load-time coercion for one subfield based on its declared type. */
+export function normalizeSubfieldStoredValue(field: FieldsSubField, value: unknown): unknown {
+  const type = field.type ?? "text";
+  if (type === "select") {
+    return value;
+  }
+  if (type === "number" || type === "integer") {
+    return interpretNumericValue(value, type);
+  }
+  return value;
+}
+
+/** Load-time coercion of configured subfield keys on a single object row. */
+export function normalizeObjectSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): JsonRecord {
+  const data = normalizeObjectValue(value);
+  let nextData = data;
+
+  for (const field of fields) {
+    if (!Object.hasOwn(data, field.key)) {
+      continue;
+    }
+    const nextValue = normalizeSubfieldStoredValue(field, data[field.key]);
+    if (!jsonValuesEqual(data[field.key], nextValue)) {
+      if (nextData === data) {
+        nextData = { ...data };
+      }
+      nextData[field.key] = nextValue;
+    }
+  }
+
+  return nextData;
+}
+
+/** Load-time subfield coercion across every object row in a structure value. */
+export function normalizeStructureSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) =>
+    isJsonRecord(item) ? normalizeObjectSubfieldValues(item, fields) : item,
+  );
+}
+
+/** Whether object subfield normalization would change the stored value. */
+export function shouldNormalizeObjectSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): boolean {
+  return (
+    isJsonRecord(value) && !jsonValuesEqual(value, normalizeObjectSubfieldValues(value, fields))
+  );
+}
+
+/** Whether structure subfield normalization would change the stored value. */
+export function shouldNormalizeStructureSubfieldValues(
+  value: unknown,
+  fields: FieldsSubField[],
+): boolean {
+  return (
+    Array.isArray(value) && !jsonValuesEqual(value, normalizeStructureSubfieldValues(value, fields))
+  );
+}
+
+/** Parses a complete numeric string; returns `undefined` for empty or invalid input. */
 export function parseNumericInput(value: string, type: "number" | "integer") {
   if (value.trim() === "") {
     return undefined;
@@ -345,6 +575,91 @@ export function parseNumericInput(value: string, type: "number" | "integer") {
   }
 
   return numericValue;
+}
+
+/** Coerces stored subfield values to a finite number matching the subfield type. */
+export function interpretNumericValue(
+  value: unknown,
+  type: "number" | "integer",
+): number | undefined {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return undefined;
+    if (type === "integer" && !Number.isInteger(value)) return undefined;
+    return value;
+  }
+  if (typeof value === "string") {
+    return parseNumericInput(value, type);
+  }
+  return undefined;
+}
+
+/** Commit decision for a numeric subfield keystroke: set, clear, or hold prior value. */
+export type NumericCommit = { type: "set"; value: number } | { type: "clear" } | { type: "hold" };
+
+/** Maps raw input to a commit action without wiping in-progress decimals or minus signs. */
+export function numericChangeCommit(raw: string, type: "number" | "integer"): NumericCommit {
+  if (raw.trim() === "") {
+    return { type: "clear" };
+  }
+  const parsed = parseNumericInput(raw, type);
+  return parsed === undefined ? { type: "hold" } : { type: "set", value: parsed };
+}
+
+function NumericSubField({
+  id,
+  name,
+  required,
+  placeholder,
+  labelledBy,
+  type,
+  value,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  required?: boolean;
+  placeholder?: string;
+  labelledBy: string;
+  type: "number" | "integer";
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const committed = interpretNumericValue(value, type);
+  const valueString = committed === undefined ? "" : String(committed);
+  const [draft, setDraft] = useState(valueString);
+
+  // Resync draft only when the committed prop diverges — not on every keystroke.
+  useEffect(() => {
+    if (parseNumericInput(draft, type) !== committed) {
+      setDraft(valueString);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [committed]);
+
+  return (
+    <Input
+      id={id}
+      name={name}
+      required={required}
+      placeholder={placeholder}
+      aria-labelledby={labelledBy}
+      className="w-full"
+      type="text"
+      inputMode={type === "integer" ? "numeric" : "decimal"}
+      value={draft}
+      onChange={(event: ChangeEvent<HTMLInputElement>) => {
+        const raw = event.currentTarget.value;
+        setDraft(raw);
+        const commit = numericChangeCommit(raw, type);
+        if (commit.type === "set") {
+          onChange(commit.value);
+        } else if (commit.type === "clear") {
+          onChange(undefined);
+        }
+      }}
+      onBlur={() => setDraft(committed === undefined ? "" : String(committed))}
+    />
+  );
 }
 
 function readInputValue(
@@ -401,7 +716,7 @@ function renderSubField(
           <input
             id={id}
             type="checkbox"
-            checked={Boolean(value)}
+            checked={isBooleanChecked(value)}
             name={field.key}
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               onChange(event.currentTarget.checked)
@@ -420,18 +735,22 @@ function renderSubField(
               label: choiceLabel(choice, i18n),
             })),
           ]}
-          value={typeof value === "string" ? value : ""}
+          value={normalizeSelectSubfieldValue(value, field.options)}
           onValueChange={(nextValue) => onChange(String(nextValue))}
         />
-      ) : (
-        <Input
-          {...commonProps}
-          className="w-full"
-          type={
-            type === "number" || type === "integer" ? "number" : type === "url" ? "url" : "text"
-          }
-          step={type === "integer" ? 1 : undefined}
+      ) : type === "number" || type === "integer" ? (
+        <NumericSubField
+          id={id}
+          name={field.key}
+          required={field.required}
+          placeholder={placeholder}
+          labelledBy={labelId}
+          type={type}
+          value={value}
+          onChange={onChange}
         />
+      ) : (
+        <Input {...commonProps} className="w-full" type={type === "url" ? "url" : "text"} />
       )}
       {suffix ? <small style={helpTextStyle}>{suffix}</small> : null}
     </div>
@@ -470,6 +789,7 @@ function summary(
   });
 }
 
+/** JSON object editor with a fixed subfield layout from `options.fields`. */
 export function ObjectField({
   value,
   onChange,
@@ -477,8 +797,9 @@ export function ObjectField({
   options,
 }: FieldWidgetProps<ObjectOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  const data = normalizeObjectValue(value);
   const fields = options?.fields ?? [];
+  const data = normalizeObjectSubfieldValues(value, fields);
+  useNormalizedOnChange(value, data, onChange, shouldNormalizeObjectSubfieldValues(value, fields));
 
   if (!fields.length) {
     return <p>{fieldMessage("objectRequiresFields", i18n)}</p>;
@@ -494,6 +815,7 @@ export function ObjectField({
   );
 }
 
+/** Repeatable JSON object rows with add/remove, optional reorder, and min/max guards. */
 export function StructureField({
   value,
   onChange,
@@ -501,10 +823,18 @@ export function StructureField({
   options,
 }: FieldWidgetProps<StructureOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  const items = normalizeStructureValue(value);
   const fields = options?.fields ?? [];
+  const normalizedValue = normalizeStructureSubfieldValues(value, fields);
+  const items = normalizeStructureValue(normalizedValue);
+  useNormalizedOnChange(
+    value,
+    normalizedValue,
+    onChange,
+    shouldNormalizeStructureSubfieldValues(value, fields),
+  );
   const itemLabel = localizedString(options?.itemLabel, i18n, fieldMessage("item", i18n));
   const sortable = options?.sortable !== false;
+  const bounds = effectiveStructureBounds(options?.min, options?.max);
 
   if (!fields.length) {
     return <p>{fieldMessage("structureRequiresFields", i18n)}</p>;
@@ -534,7 +864,7 @@ export function StructureField({
               size="sm"
               variant="secondary-destructive"
               icon={TrashIcon}
-              disabled={typeof options?.min === "number" && items.length <= options.min}
+              disabled={typeof bounds.min === "number" && items.length <= bounds.min}
               onClick={() => updateItems(removeStructureItem(items, index))}
             >
               {fieldMessage("remove", i18n)}
@@ -569,7 +899,7 @@ export function StructureField({
         size="sm"
         className={fullWidthButtonClassName}
         icon={PlusIcon}
-        disabled={typeof options?.max === "number" && items.length >= options.max}
+        disabled={typeof bounds.max === "number" && items.length >= bounds.max}
         onClick={() => updateItems(addStructureItem(items))}
       >
         {formatFieldMessage("addItem", i18n, { item: itemLabel })}
@@ -587,6 +917,7 @@ export const ObjectFormField = ObjectField;
 /** @deprecated Use StructureField. */
 export const ListField = StructureField;
 
+/** Typed link editor for URL, email, tel, entry, and media targets. */
 export function LinkField({
   value,
   onChange,
@@ -595,6 +926,7 @@ export function LinkField({
 }: FieldWidgetProps<LinkOptions>) {
   const i18n = useFieldI18n(options?.i18n);
   const data = normalizeLinkValue(value);
+  useNormalizedOnChange(value, data, onChange, shouldNormalizeLinkValue(value));
 
   function update(nextValue: Partial<LinkValue>) {
     onChange(updateLinkValue(data, nextValue));
@@ -656,6 +988,7 @@ export function LinkField({
   );
 }
 
+/** Single- or multi-select choice widget with vertical, horizontal, and card layouts. */
 export function ChoicesField({
   value,
   onChange,
@@ -664,9 +997,12 @@ export function ChoicesField({
   options,
 }: FieldWidgetProps<ChoicesOptions>) {
   const i18n = useFieldI18n(options?.i18n);
-  const choicesList = normalizeChoices(options?.choices ?? options?.options);
+  // Empty `choices` must not shadow the `options` alias (`??` alone would).
+  const choicesList = normalizeChoices(
+    options?.choices?.length ? options.choices : options?.options,
+  );
   const legend = label ?? fieldMessage("choices", i18n);
-  const multiple = Boolean(options?.multiple);
+  const multiple = coerceBoolean(options?.multiple);
   const horizontal = options?.orientation === "horizontal";
   const selected = new Set(normalizeChoiceSelection(value, multiple));
 
@@ -766,7 +1102,7 @@ export function ChoicesField({
       <Radio.Group
         legend={legend}
         appearance="card"
-        value={typeof value === "string" ? value : ""}
+        value={normalizeSingleChoice(value)}
         onValueChange={(nextValue) =>
           onChange(updateChoiceSelection(value, String(nextValue), true, false))
         }
@@ -791,6 +1127,7 @@ export function ChoicesField({
   );
 }
 
+/** Admin widget registry keyed by `fieldsWidgets` identifiers. */
 export const fields = {
   object: ObjectField,
   structure: StructureField,
